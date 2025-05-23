@@ -151,10 +151,9 @@ class TestBUSCOPlots(TestPluginBase):
         with open(self.get_data_path("scatterplot/sample_data.json"), "r") as f:
             exp = json.load(f)
         self.assertEqual(obs, exp)
-        
+
     def test_scatter_feature_data(self):
         obs = _draw_completeness_vs_contamination(self.df_feature_data)
         with open(self.get_data_path("scatterplot/feature_data.json"), "r") as f:
             exp = json.load(f)
         self.assertEqual(obs, exp)
-        

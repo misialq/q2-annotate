@@ -60,7 +60,9 @@ def _draw_marker_summary_histograms(data: pd.DataFrame) -> dict:
         data, columns=["single", "duplicated", "fragmented", "missing", "completeness"]
     )
     chart2 = _draw_horizontal_histograms(
-        data, columns=["contamination", "scaffolds", "contigs_n50", "scaffold_n50", "length"]
+        data, columns=[
+            "contamination", "scaffolds", "contigs_n50", "scaffold_n50", "length"
+        ]
     )
 
     chart = alt.vconcat(chart, chart2).configure_axis(
@@ -121,7 +123,7 @@ def _draw_selectable_summary_histograms(data: pd.DataFrame) -> dict:
         dict: Dictionary containing the Vega spec.
     """
     metrics = [
-        'single', 'duplicated', 'fragmented', 'missing', 'completeness', 
+        'single', 'duplicated', 'fragmented', 'missing', 'completeness',
         'contamination', 'scaffolds', 'contigs_n50', 'length'
     ]
     data = pd.melt(

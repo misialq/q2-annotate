@@ -20,7 +20,7 @@ arguments_with_hyphens = {
     "update_data": "update-data",
 }
 
-MARKER_COLS = ["single", "duplicated", "fragmented", "missing", 
+MARKER_COLS = ["single", "duplicated", "fragmented", "missing",
                "complete", "completeness", "contamination"]
 
 
