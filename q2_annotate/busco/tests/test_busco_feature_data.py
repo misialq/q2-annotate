@@ -64,7 +64,7 @@ class TestBUSCOFeatureData(TestPluginBase):
     )
     @patch(
         "q2_annotate.busco.busco._draw_marker_summary_histograms",
-        return_value={"fake2": {"plot": "spec"}}
+        return_value={"fake2": {"plot": "NaN"}}
     )
     @patch(
         "q2_annotate.busco.busco._draw_selectable_summary_histograms",
@@ -72,7 +72,7 @@ class TestBUSCOFeatureData(TestPluginBase):
     )
     @patch(
         "q2_annotate.busco.busco._draw_completeness_vs_contamination",
-        return_value={"fake4": {"plot": "spec"}}
+        return_value={"fake4": {"plot": "NaN"}}
     )
     @patch(
         "q2_annotate.busco.busco._get_feature_table", return_value="table1"
@@ -117,10 +117,10 @@ class TestBUSCOFeatureData(TestPluginBase):
                     }
                 }
             ),
-            "vega_summary_json": json.dumps({"fake2": {"plot": "spec"}}),
+            "vega_summary_json": json.dumps({"fake2": {"plot": "null"}}),
             "table": "table1",
             "summary_stats_json": "stats1",
-            "scatter_json": json.dumps({"fake4": {"plot": "spec"}}),
+            "scatter_json": json.dumps({"fake4": {"plot": "null"}}),
             "page_size": 100
         }
         mock_render.assert_called_with(

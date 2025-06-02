@@ -153,7 +153,9 @@ def _visualize_busco(output_dir: str, results: pd.DataFrame) -> None:
         # Draw selectable histograms (only for sample data mags)
         tabbed_context = {
             "vega_summary_selectable_json":
-            json.dumps(_draw_selectable_summary_histograms(results))
+            json.dumps(
+                _draw_selectable_summary_histograms(results)
+            ).replace("NaN", "null")
         }
     else:
         counter_col = "mag_id"
@@ -214,14 +216,15 @@ def _visualize_busco(output_dir: str, results: pd.DataFrame) -> None:
         })
 
     # Render
-    results = results.where(pd.notnull(results), None)
     vega_json = json.dumps(context)
     vega_json_summary = json.dumps(
         _draw_marker_summary_histograms(results)
-    )
+    ).replace("NaN", "null")
     table_json = _get_feature_table(results)
     stats_json = _calculate_summary_stats(results)
-    scatter_json = json.dumps(_draw_completeness_vs_contamination(results))
+    scatter_json = json.dumps(
+        _draw_completeness_vs_contamination(results)
+    ).replace("NaN", "null")
     tabbed_context.update({
         "tabs": [
             {"title": "QC overview", "url": "index.html"},
