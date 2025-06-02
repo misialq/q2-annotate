@@ -7,7 +7,6 @@
 # ----------------------------------------------------------------------------
 import json
 
-import numpy as np
 import qiime2
 import pandas as pd
 from q2_annotate.busco.busco import (
