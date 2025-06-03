@@ -61,6 +61,10 @@ def tpm(
     return df['rpk'] / df["sample-id"].map(rpk_per_sample) * 10**6
 
 
+def depth(df: pd.DataFrame):
+    return df['meandepth']
+
+
 def _merge_frames(
         coverage_df: pd.DataFrame, lengths_df: pd.DataFrame
 ) -> pd.DataFrame:
@@ -156,7 +160,7 @@ def estimate_abundance(
         min_read_len: int = 0,
         threads: int = 1,
 ) -> pd.DataFrame:
-    metric_func = {"rpkm": rpkm, "tpm": tpm}[metric]
+    metric_func = {"rpkm": rpkm, "tpm": tpm, "depth": depth}[metric]
 
     sample_ids_bam = {
         os.path.basename(x).split("_alignment")[0]: x for x

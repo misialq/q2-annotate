@@ -1475,6 +1475,7 @@ plugin.pipelines.register_function(
 M_abundance_in, P_abundance_out = TypeMap({
     Str % Choices(['rpkm']): Properties('rpkm'),
     Str % Choices(['tpm']): Properties('tpm'),
+    Str % Choices(['depth']): Properties('depth'),
 })
 
 plugin.methods.register_function(
