@@ -340,14 +340,14 @@ function renderChart() {
   const selectedCollapseLevel = d3.select('#collapse-level-select').property('value'); // Get collapse level
 
   // Now apply contamination and completeness filters to the already filtered MAGs
-  let mags = filteredByClassificationMags.filter(d =>
+  let mags = filteredByClassificationMags.filter(d => 
     d.contamination <= contaminationFilter &&
-    d.completeness <= completenessFilter
+    d.completeness >= completenessFilter // Changed from <= to >=
   );
-
+  
   if (mags.length === 0 && filteredByClassificationMags.length > 0) {
     svg.selectAll('*').remove();
-    warning.text('No MAGs pass the current contamination/completeness thresholds with the selected filters.').style('display', 'block');
+    warning.text('No MAGs pass the current contamination/min completeness thresholds with the selected filters.').style('display', 'block'); // Updated warning message
     svg.attr('viewBox', `0 0 ${svg.node().clientWidth} ${margin.top + margin.bottom + 40}`)
     .attr('height', margin.top + margin.bottom + 40);
     updateDetailsView(null, 1); // Clear details view
