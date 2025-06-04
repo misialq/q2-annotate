@@ -197,7 +197,7 @@ body {
   align-items: flex-end;
   justify-content: flex-end;
   margin-left: auto;
-  grid-column: -1;
+  gap: 8px;
 }
 .chart-container {
   position: relative;
@@ -278,7 +278,7 @@ svg.chart { width: 100%; height: auto; }
 }
 .mag-contamination-bar { fill: var(--accent-secondary); }
 .modal-completeness-bar { fill: var(--success-color); }
-.modal-contamination-bar { fill: var(--warning-color); }
+.modal-contamination-bar { fill: var(--accent-secondary); }
 .modal-bg-arc { fill: var(--grid-color); }
 .axis path,
 .axis line {
@@ -596,7 +596,6 @@ svg .row:hover:not(.selected) {
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: var(--font-sans-serif);
-  margin-right: 8px;
 }
 
 .action-button:hover {
@@ -612,6 +611,28 @@ svg .row:hover:not(.selected) {
 
 .action-button i {
   font-size: 1rem;
+}
+
+/* Secondary Action Button Style (for Reset) */
+.action-button-secondary {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.action-button-secondary:hover {
+  background-color: var(--bg-primary); /* Slightly different background on hover */
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+.action-button-secondary:active {
+  background-color: var(--border-color);
+  transform: translateY(0);
+  box-shadow: 0 2px 6px var(--shadow-color);
+  color: var(--text-primary);
 }
 
 /* Taxonomy Distribution Modal */

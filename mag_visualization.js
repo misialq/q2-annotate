@@ -900,11 +900,11 @@ function renderCircularView(d, actualMaxContDisplay) {
     detailsSVG.append('path')
       .attr('d', coverageArc())
       .attr('transform', `translate(${w/2},${h/2})`)
-      .attr('fill', '#6c757d') // Grey color for coverage ring
+      .attr('fill', '#78065C') // Deep magenta/purple
       .attr('stroke', 'white')
       .attr('stroke-width', 0.5)
-      .on('mouseover', function() {
-        d3.select(this).transition().duration(150).style('fill', '#495057'); // Darker grey on hover
+      .on('mouseover', function() { 
+        d3.select(this).transition().duration(150).style('fill', '#970774'); // Lighter magenta/purple on hover
         tooltip.style('opacity',1);
       })
       .on('mousemove', e => {
@@ -927,8 +927,8 @@ function renderCircularView(d, actualMaxContDisplay) {
         }
         positionTooltip(e, tooltipContent);
       })
-      .on('mouseout', function() {
-        d3.select(this).transition().duration(150).style('fill', '#6c757d'); // Back to original grey
+      .on('mouseout', function() { 
+        d3.select(this).transition().duration(150).style('fill', '#78065C'); // Back to deep magenta/purple
         tooltip.style('opacity',0);
       });
 
@@ -1108,6 +1108,37 @@ d3.json("visualization_data.json?v=" + Date.now()).then(function(loadedData) {
   updateContaminationValueDisplay(); // Initial call to set display value
   updateCompletenessValueDisplay(); // Initial call for completeness display
   d3.select("#collapse-level-select").property("value", "none"); // Ensure default is no collapse
+
+  // Setup reset filters button
+  const resetFiltersBtn = d3.select('#reset-filters-btn');
+  if (!resetFiltersBtn.empty()) {
+    resetFiltersBtn.on('click', function() {
+      // Reset contamination slider
+      contThresholdSlider.property('value', 100);
+      updateContaminationValueDisplay();
+
+      // Reset completeness slider
+      compThresholdSlider.property('value', 0);
+      updateCompletenessValueDisplay();
+
+      // Reset quality filters
+      activeQualityFilters.clear();
+      d3.selectAll('.legend-item').classed('filter-active', false);
+
+      // Reset other dropdowns to their default visual state and value
+      d3.select('#sort-select').property('value', 'completeness');
+      d3.select('#order-select').property('value', 'descending');
+      d3.select('#scaling-select').property('value', 'length');
+      d3.select('#classification-level-select').property('value', 'none');
+      d3.select('#collapse-level-select').property('value', 'none');
+      
+      // Note: Sample dropdown is not reset by this button, 
+      // as filter reset usually applies to the current sample view.
+
+      renderChart(); // Re-render the chart with reset filters
+    });
+  }
+
 }).catch(function(error) {
   console.error("Error loading the data: ", error);
   warning.text("Error loading visualization data. Please check the console.").style('display', 'block');
@@ -1117,47 +1148,52 @@ d3.json("visualization_data.json?v=" + Date.now()).then(function(loadedData) {
 function showTaxonomyDistribution() {
   const selectedSample = sampleDropdown.property('value');
   const rawMags = vizData[selectedSample] || [];
+  // Suggested log: console.log('Raw MAGs for sample '+ selectedSample + ':', rawMags.length, rawMags);
 
   if (rawMags.length === 0) {
     alert('No MAGs found in the selected sample.');
     return;
   }
+  
+  let filteredMags = [...rawMags]; // Start with a copy of rawMags
 
-  // Apply current filters to get the MAGs we're actually viewing
-  let filteredMags = rawMags;
+  // Apply quality filters
   if (activeQualityFilters.size > 0) {
-    filteredMags = rawMags.filter(mag => activeQualityFilters.has(mag.quality));
+    filteredMags = filteredMags.filter(mag => activeQualityFilters.has(mag.quality));
   }
+  // Suggested log: console.log('After quality filters ('+ activeQualityFilters.size + ' active):', filteredMags.length, activeQualityFilters);
 
+  // Apply classification level filter
   const selectedClassificationLevel = d3.select('#classification-level-select').property('value');
-  filteredMags = filteredMags.filter(mag =>
+  filteredMags = filteredMags.filter(mag => 
     meetsClassificationLevel(mag.assigned_taxonomy, selectedClassificationLevel)
   );
-
+  // Suggested log: console.log('After classification filter ('+ selectedClassificationLevel + '):', filteredMags.length);
+  
+  // Apply contamination filter
   const contaminationFilter = +d3.select('#cont-threshold').property('value');
   filteredMags = filteredMags.filter(d => d.contamination <= contaminationFilter);
-
-  // Also apply completeness filter for taxonomy distribution
+  // Suggested log: console.log('After contamination filter (<='+ contaminationFilter + '%):', filteredMags.length);
+  
+  // Apply completeness filter
   const completenessFilter = +d3.select('#comp-threshold').property('value');
-  filteredMags = filteredMags.filter(d => d.completeness <= completenessFilter);
+  filteredMags = filteredMags.filter(d => d.completeness >= completenessFilter);
+  // Suggested log: console.log('After completeness filter (>='+ completenessFilter + '%):', filteredMags.length);
 
   if (filteredMags.length === 0) {
     alert('No MAGs match the current filters.');
     return;
   }
-
-  // Update modal title
+  // Suggested log: console.log('Final filtered MAGs for taxonomy chart:', filteredMags.length, filteredMags);
+  
   d3.select('#taxonomy-modal-title').text(`Taxonomy Distribution - ${selectedSample} (${filteredMags.length} MAGs)`);
-
-  // Show modal
   d3.select('#taxonomy-overlay').style('display', 'flex');
-
-  // Render the chart
   renderTaxonomyDistributionChart(filteredMags);
 }
 
 // Function to render taxonomy distribution chart
 function renderTaxonomyDistributionChart(mags) {
+  // Suggested log: console.log('renderTaxonomyDistributionChart received MAGs:', mags.length, mags);
   const svg = d3.select('#taxonomy-chart');
   svg.selectAll('*').remove();
 
@@ -1193,7 +1229,8 @@ function renderTaxonomyDistributionChart(mags) {
       levelCounts[levelName]++;
     }
   });
-
+  // Suggested log: console.log('Taxonomy levelCounts:', levelCounts);
+  
   // Convert to array and filter out zeros
   const data = Object.entries(levelCounts)
     .filter(([level, count]) => count > 0)
@@ -1206,7 +1243,8 @@ function renderTaxonomyDistributionChart(mags) {
       const bNum = parseInt(b.level.split(' ')[1]);
       return aNum - bNum;
     });
-
+  // Suggested log: console.log('Data for taxonomy bars:', data);
+  
   if (data.length === 0) {
     svg.append('text')
       .attr('x', '50%')
