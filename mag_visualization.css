@@ -1,0 +1,693 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+* {
+  box-sizing: border-box;
+}
+:root {
+  --bg-primary: #f8f9fa;
+  --bg-secondary: #ffffff;
+  --text-primary: #212529;
+  --text-secondary: #495057;
+  --border-color: #dee2e6;
+  --grid-color: #e9ecef;
+  --grid-color-rgb: 233, 236, 239; /* RGB values for grid color */
+  --accent-primary: #007bff;
+  --accent-primary-darker: #0056b3;
+  --accent-secondary: #6c757d;
+  --shadow-color: rgba(0, 0, 0, 0.075);
+  --success-color: #28a745;
+  --warning-color: #ffc107;
+  --danger-color: #dc3545;
+  --font-sans-serif: 'Inter', sans-serif;
+}
+body {
+  font-family: var(--font-sans-serif);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  margin: 24px;
+  line-height: 1.6;
+}
+.controls {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 20px 24px;
+  background-color: var(--bg-secondary);
+  border-radius: 8px;
+  box-shadow: 0 2px 10px var(--shadow-color);
+  align-items: end;
+}
+.controls .control-group {
+  display: flex;
+  flex-direction: column;
+  min-height: 60px;
+  justify-content: flex-end;
+  flex: 1 1 160px; /* grow, shrink, basis */
+  min-width: 160px; /* Minimum width before wrapping */
+}
+.controls .control-group-wide {
+  flex: 1 1 320px; /* Wider basis for legend and wide items */
+  min-width: 320px; /* Ensure wide items have enough space */
+}
+.controls label {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.controls select,
+.controls input[type='range'] {
+  padding: 8px 10px;
+  font-size: 0.875rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  height: 36px;
+}
+.controls select:focus,
+.controls input[type='range']:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+.controls input[type='range'] {
+  padding: 0;
+  height: auto;
+}
+
+/* Contamination threshold specific styling */
+.control-with-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.control-with-value input {
+  flex-grow: 1;
+}
+.control-value-display {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  min-width: 35px;
+  text-align: right;
+  font-weight: 500;
+}
+
+/* Modal Toggle Container updated */
+.modal-toggle-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  background-color: var(--bg-primary);
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.toggle-main-label {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Legend box updated */
+.legend-box {
+  display: flex;
+  flex-direction: column;
+  min-height: 60px;
+  justify-content: flex-end;
+}
+
+.legend-box > label {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.legend-items-container {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  height: 36px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+  background-color: var(--bg-primary);
+  height: 100%;
+  line-height: 1;
+}
+
+.legend-item:hover {
+  background-color: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
+}
+
+.legend-item:hover i {
+  color: white !important;
+}
+
+.legend-item.filter-active {
+  background-color: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
+}
+
+.legend-item.filter-active i {
+  color: white !important;
+}
+
+.legend-item i {
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.legend-item span {
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  line-height: 1;
+}
+
+/* Action button container */
+.action-button-container {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  margin-left: auto;
+  grid-column: -1;
+}
+.chart-container {
+  position: relative;
+  width: 100%;
+  min-height: 100px;
+  background-color: var(--bg-secondary);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px var(--shadow-color);
+}
+.warning {
+  text-align: center;
+  color: var(--danger-color);
+  font-weight: 500;
+  padding: 40px 0;
+  display: none;
+  font-size: 1.1rem;
+}
+svg.chart { width: 100%; height: auto; }
+.divider {
+  stroke: var(--grid-color);
+  stroke-dasharray: 3 3;
+}
+.tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  z-index: 20;
+  transition: opacity 0.1s ease;
+}
+.overlay {
+  position: fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+.modal {
+  background: var(--bg-secondary);
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+  position: relative;
+  width: 480px;
+}
+.modal h2 {
+  margin: 0 0 16px;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.modal-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  cursor: pointer;
+  font-size: 22px;
+  color: var(--text-secondary);
+}
+.modal-close:hover {
+  color: var(--text-primary);
+}
+#modal-chart {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+.mag-contamination-bar { fill: var(--accent-secondary); }
+.modal-completeness-bar { fill: var(--success-color); }
+.modal-contamination-bar { fill: var(--warning-color); }
+.modal-bg-arc { fill: var(--grid-color); }
+.axis path,
+.axis line {
+  stroke: var(--border-color);
+}
+.axis text {
+  fill: var(--text-secondary);
+  font-size: 0.8rem;
+}
+.chart-axis-label {
+  font-size: 0.85rem;
+  fill: var(--text-secondary);
+  font-weight: 500;
+}
+/* Quality Icon Styles */
+.quality-icon {
+  font-size: 1rem;
+  vertical-align: middle;
+}
+.quality-high { color: var(--success-color); }
+.quality-medium { color: var(--accent-primary); }
+.quality-low { color: var(--danger-color); }
+
+/* Legend Box is a flex item itself within .controls */
+/* It should arrange its own children (label and items-container) in a row */
+.legend-box {
+  display: flex !important;           /* Essential for horizontal layout of its children - use !important to override .controls div rule */
+  flex-direction: column !important;     /* Label on top, items-container below - use !important to override .controls div rule */
+  align-items: baseline;   /* Align label and items text baselines */
+  gap: 10px;               /* Space between "Quality" label and the items */
+  margin-left: 0; /* Reset from any prior attempts if needed */
+  /* Let .controls manage its overall position within the controls bar */
+}
+
+/* The label "Quality" itself */
+.legend-box > label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  margin-bottom: 0; /* Remove default margins if any */
+}
+
+/* This container holds the individual clickable legend items (High, Medium, Low) */
+.legend-items-container {
+  display: flex;             /* Essential for horizontal layout of High, Medium, Low items */
+  flex-direction: row !important;       /* High, Medium, Low items side-by-side - use !important to override .controls div rule */
+  align-items: baseline;   /* Align items based on their text baseline */
+  gap: 16px;                 /* Space between High, Medium, Low items */
+  flex-wrap: wrap;           /* Allow wrapping if not enough space in .controls bar */
+  padding: 0;
+}
+
+/* Each individual legend item (e.g., icon + "High") */
+.legend-item {
+  display: flex;             /* For icon and text inside item */
+  flex-direction: row;       /* Icon and text side-by-side */
+  align-items: center;       /* Vertically center icon and text within the item */
+  gap: 6px;                  /* Space between icon and text */
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.legend-item span {
+  line-height: 1;
+}
+.legend-item i {
+  font-size: 1rem;
+  line-height: 1;
+}
+.legend-item:hover {
+  background-color: var(--bg-primary);
+}
+.legend-item.filter-active {
+  background-color: var(--accent-primary-darker);
+  color: var(--bg-secondary);
+  border-color: var(--accent-primary-darker);
+}
+.legend-item.filter-active i {
+  color: var(--bg-secondary) !important;
+}
+
+.main-content-area {
+  display: flex;
+  flex-direction: row; /* Default, but explicit */
+  gap: 24px; /* Space between the two columns */
+  margin-top: 24px; /* Space below controls/legend */
+  align-items: stretch; /* Ensure both columns have equal height */
+}
+
+#main-chart-column-wrapper {
+  flex: 2; /* Takes 2/3 of the available space */
+  display: flex; /* To allow chart-container to grow if needed */
+  flex-direction: column;
+  min-height: 0; /* Allow shrinking */
+}
+
+#main-chart-column-wrapper .chart-container {
+    width: 100%; /* Ensure it fills the column */
+    flex-grow: 1; /* Allow it to take up vertical space if main-chart-column-wrapper has a fixed height */
+}
+
+#mag-details-column {
+  flex: 1; /* Takes 1/3 of the available space */
+  padding: 18px; /* Increased from 12px */
+  background-color: var(--bg-secondary);
+  border-radius: 8px;
+  box-shadow: 0 2px 10px var(--shadow-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Center title and chart horizontally */
+  justify-content: flex-start; /* Align content to top */
+  min-height: 0; /* Allow shrinking */
+  max-height: 100%; /* Prevent expansion beyond flex container */
+  overflow: hidden; /* Ensure content doesn't overflow the panel */
+}
+
+#details-title {
+  margin: 0 0 6px; /* Further reduced bottom margin from 8px to 6px */
+  font-size: 1.25rem; /* Slightly smaller to save space */
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center; /* Ensure title text is centered */
+  width: 100%; /* Make title take full width for centering text */
+}
+
+#details-chart {
+  display: block;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  flex: 1; /* Take remaining space after title and metrics */
+  width: 100%; /* Ensure it takes full available width */
+  min-height: 280px; /* Minimum height for usability */
+  overflow: auto; /* Allow scrolling within the chart area */
+}
+
+#details-metrics-text {
+  width: 100%;
+  text-align: center;
+  margin-bottom: 4px; /* Further reduced from 6px */
+  flex-shrink: 0; /* Prevent text from shrinking */
+}
+
+/* Subtle table styles for MAG metrics */
+.mag-metrics-table {
+  margin: 0 auto;
+  border-collapse: collapse;
+  font-size: 0.75rem; /* Further reduced font size */
+  background: transparent;
+  border: 1px solid rgba(var(--grid-color-rgb), 0.5); /* More visible outer border */
+  border-radius: 4px;
+  overflow: hidden; /* Ensures rounded corners work with borders */
+}
+
+.mag-metrics-table td {
+  padding: 2px 6px; /* Further reduced padding */
+  border-bottom: 1px solid rgba(var(--grid-color-rgb), 0.35); /* More visible bottom borders */
+  text-align: left;
+}
+
+.mag-metrics-table tr:last-child td {
+  border-bottom: none; /* Remove border from last row */
+}
+
+.mag-metrics-table td:first-child {
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: right;
+  padding-right: 8px; /* Further reduced padding-right */
+  border-right: 1px solid rgba(var(--grid-color-rgb), 0.4); /* More visible right border */
+  background-color: rgba(var(--grid-color-rgb), 0.1); /* Very subtle background for labels */
+}
+
+.mag-metrics-table td:last-child {
+  color: var(--text-primary);
+  text-align: left;
+  background-color: var(--bg-secondary);
+}
+
+/* Modal Toggle Switch Styles */
+.toggle-switch {
+  position: relative;
+  width: 36px;
+  height: 18px;
+  background-color: var(--border-color);
+  border-radius: 18px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  user-select: none;
+}
+
+.toggle-switch:hover {
+  background-color: var(--accent-secondary);
+}
+
+.toggle-switch.active {
+  background-color: var(--accent-primary);
+}
+
+.toggle-switch.active:hover {
+  background-color: var(--accent-primary-darker);
+}
+
+.toggle-slider {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background-color: var(--bg-secondary);
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.toggle-switch.active .toggle-slider {
+  transform: translateX(18px);
+}
+
+.toggle-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+  user-select: none;
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.toggle-label.active {
+  background-color: var(--accent-primary);
+  color: var(--bg-secondary);
+  font-weight: 600;
+}
+
+.toggle-label:not(.active):hover {
+    background-color: var(--bg-primary);
+    color: var(--accent-primary-darker);
+}
+
+.toggle-main-label {
+  color: var(--text-primary);
+  font-weight: 600;
+  user-select: none;
+  font-size: 0.85rem;
+}
+
+/* Selected MAG row highlighting */
+.row.selected .row-background {
+  fill: rgba(var(--grid-color-rgb), 0.08);
+  stroke: none;
+}
+
+.row.selected .row-accent {
+  opacity: 1;
+}
+
+.row:not(.selected) .row-background {
+  fill: transparent;
+  stroke: none;
+}
+
+.row:not(.selected) .row-accent {
+  opacity: 0;
+}
+
+.row {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.row:hover:not(.selected) .row-background {
+  fill: rgba(var(--grid-color-rgb), 0.04);
+}
+
+.row-accent {
+  fill: var(--accent-primary);
+  transition: opacity 0.3s ease;
+}
+
+/* Dimming effect for non-selected rows */
+svg .row:not(.selected) {
+  opacity: 0.75 !important;
+  transition: opacity 0.3s ease;
+}
+
+svg .row.selected {
+  opacity: 1.0 !important;
+  transition: opacity 0.3s ease;
+}
+
+svg .row:hover:not(.selected) {
+  opacity: 0.85 !important;
+}
+
+/* Action Button Styles */
+.action-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--bg-secondary);
+  background-color: var(--accent-primary);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--font-sans-serif);
+  margin-right: 8px;
+}
+
+.action-button:hover {
+  background-color: var(--accent-primary-darker);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.action-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 123, 255, 0.2);
+}
+
+.action-button i {
+  font-size: 1rem;
+}
+
+/* Taxonomy Distribution Modal */
+.taxonomy-modal {
+  background: var(--bg-secondary);
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+  position: relative;
+  width: 600px;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.taxonomy-modal h2 {
+  margin: 0 0 16px;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.taxonomy-modal-chart {
+  flex: 1;
+  overflow: auto;
+  min-height: 300px;
+}
+
+/* Small legend under left plot */
+.left-plot-legend {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin-top: 10px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.legend-item-small {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-color-box {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.legend-contamination {
+  background-color: var(--accent-secondary);
+}
+
+.legend-completeness {
+  background-color: var(--success-color);
+}
+
+/* Info Icons */
+.chart-container, #mag-details-column {
+  position: relative; /* Needed for absolute positioning of info icon */
+}
+
+.info-icon {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  cursor: help;
+  z-index: 15;
+  transition: color 0.2s ease;
+}
+
+.info-icon:hover {
+  color: var(--accent-primary);
+}
