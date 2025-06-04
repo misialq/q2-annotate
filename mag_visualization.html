@@ -689,6 +689,20 @@
         </div>
     </div>
     <div class="control-group">
+        <label for="collapse-level-select">Collapse by</label>
+        <select id="collapse-level-select">
+            <option value="none" selected>No Collapse</option>
+            <option value="1">Level 1 (Domain)</option>
+            <option value="2">Level 2 (Kingdom)</option>
+            <option value="3">Level 3 (Phylum)</option>
+            <option value="4">Level 4 (Class)</option>
+            <option value="5">Level 5 (Order)</option>
+            <option value="6">Level 6 (Family)</option>
+            <option value="7">Level 7 (Genus)</option>
+            <option value="8">Level 8 (Species)</option>
+        </select>
+    </div>
+    <div class="control-group">
         <label>Details View</label>
         <div class="modal-toggle-container">
             <span class="toggle-label">circular</span>
@@ -959,6 +973,22 @@
       compThresholdValueDisplay.text(`${value}%`);
     }
 
+    // Utility function to get ancestor taxonomy at a specific level
+    function getAncestorTaxonomy(fullTaxonomyString, level) {
+      if (!fullTaxonomyString || level === "none" || !level) {
+        return fullTaxonomyString;
+      }
+      const levelInt = parseInt(level, 10);
+      if (isNaN(levelInt) || levelInt <= 0) {
+        return fullTaxonomyString;
+      }
+      const parts = fullTaxonomyString.split(';');
+      if (levelInt >= parts.length) {
+        return fullTaxonomyString;
+      }
+      return parts.slice(0, levelInt).join(';');
+    }
+
     // Per-MAG monochromatic color scale using accent color variations
     function makeColorScale(taxa) {
       if (!taxa || taxa.length === 0) {
@@ -1075,6 +1105,7 @@
       const sortOrder = d3.select('#order-select').property('value');
       const contaminationFilter = +contThresholdSlider.property('value');
       const completenessFilter = +compThresholdSlider.property('value');
+      const selectedCollapseLevel = d3.select('#collapse-level-select').property('value'); // Get collapse level
 
       // Now apply contamination and completeness filters to the already filtered MAGs
       let mags = filteredByClassificationMags.filter(d => 
@@ -1298,54 +1329,112 @@
       // Right plot bars: contig composition scaled to assembly length
       rowsEnter.each(function(d) { 
         const contigsMap = d.contigs || {};
-        const groupingTaxonomies = Object.keys(contigsMap);
-        if (groupingTaxonomies.length === 0) return;
+        // const groupingTaxonomies = Object.keys(contigsMap);
+        // if (groupingTaxonomies.length === 0) return; // Original check
 
-        const allIndividualContigs = groupingTaxonomies.flatMap(groupTaxon => 
-            contigsMap[groupTaxon].map(contig => ({ ...contig, groupTaxon }))
-        );
-        if (allIndividualContigs.length === 0) return;
-
-        // Calculate total length per taxon for consistent color ordering
-        const taxonTotalLengths = {};
-        groupingTaxonomies.forEach(groupTaxon => {
-          taxonTotalLengths[groupTaxon] = d3.sum(contigsMap[groupTaxon], c => c.length);
-        });
-        
-        const taxaOrderedByLength = groupingTaxonomies.sort((a, b) => taxonTotalLengths[b] - taxonTotalLengths[a]);
-        const colorScaleChart = makeColorScale(taxaOrderedByLength);
-        const totalMagLength = d3.sum(allIndividualContigs, c => c.length);
-        if (totalMagLength === 0) return;
-
-        // Get the selected scaling method
         const scalingMethod = d3.select('#scaling-select').property('value');
-        
-        const taxaData = taxaOrderedByLength.map(groupTaxon => {
-          const contigsInGroup = contigsMap[groupTaxon];
-          const totalLengthInGroup = d3.sum(contigsInGroup, c => c.length);
-          return { 
-            taxon: groupTaxon,
-            totalLength: totalLengthInGroup, 
-            count: contigsInGroup.length, 
-            metric: scalingMethod === 'length' ? totalLengthInGroup : contigsInGroup.length
-          };
-        });
 
-        let currentX = rightPlotStartX + 2; 
-        const availableRightWidth = scalingMethod === 'length' ? 
-          rightPlotScale(d.total_length) : 
-          rightPlotScale(Object.values(d.contigs || {}).reduce((total, contigList) => total + contigList.length, 0));
-        const totalMagMetric = scalingMethod === 'length' ? totalMagLength : allIndividualContigs.length;
+        // 1. Determine original taxa order and color scale (always based on uncollapsed data)
+        const originalTaxaForColoring = Object.keys(contigsMap).sort((a, b) => {
+            const lengthA = d3.sum(contigsMap[a] || [], c => c.length);
+            const lengthB = d3.sum(contigsMap[b] || [], c => c.length);
+            return lengthB - lengthA;
+        });
+        const colorScaleChart = makeColorScale(originalTaxaForColoring);
+
+        // 2. Prepare data for plotting (either collapsed or original)
+        let plottedTaxaDetails = [];
+
+        if (selectedCollapseLevel !== "none" && Object.keys(contigsMap).length > 0) {
+            const aggregatedTaxa = {}; 
+            for (const [originalGroupTaxon, contigList] of Object.entries(contigsMap)) {
+                if (!contigList || contigList.length === 0) continue;
+                const collapsedAncestor = getAncestorTaxonomy(originalGroupTaxon, selectedCollapseLevel);
+                
+                if (!aggregatedTaxa[collapsedAncestor]) {
+                    aggregatedTaxa[collapsedAncestor] = { totalLength: 0, count: 0, contributingOriginalTaxa: {} };
+                }
+                const currentOriginalGroupLength = d3.sum(contigList, c => c.length);
+                aggregatedTaxa[collapsedAncestor].totalLength += currentOriginalGroupLength;
+                aggregatedTaxa[collapsedAncestor].count += contigList.length;
+                aggregatedTaxa[collapsedAncestor].contributingOriginalTaxa[originalGroupTaxon] = 
+                    (aggregatedTaxa[collapsedAncestor].contributingOriginalTaxa[originalGroupTaxon] || 0) + currentOriginalGroupLength;
+            }
+
+            plottedTaxaDetails = Object.entries(aggregatedTaxa).map(([collapsedTaxon, data]) => {
+                let dominantOriginalTaxon = "";
+                let maxLen = -1;
+                for (const [origTaxon, len] of Object.entries(data.contributingOriginalTaxa)) {
+                    if (len > maxLen) {
+                        maxLen = len;
+                        dominantOriginalTaxon = origTaxon;
+                    }
+                }
+                return {
+                    taxonDisplay: collapsedTaxon,
+                    colorKey: dominantOriginalTaxon || collapsedTaxon, 
+                    totalLength: data.totalLength,
+                    count: data.count,
+                    metricValue: (scalingMethod === 'length' ? data.totalLength : data.count)
+                };
+            });
+        } else if (Object.keys(contigsMap).length > 0) { // No collapse, but contigs exist
+            plottedTaxaDetails = originalTaxaForColoring.map(groupTaxon => {
+                const contigsInGroup = contigsMap[groupTaxon] || [];
+                const totalLengthInGroup = d3.sum(contigsInGroup, c => c.length);
+                const countInGroup = contigsInGroup.length;
+                return {
+                    taxonDisplay: groupTaxon,
+                    colorKey: groupTaxon,
+                    totalLength: totalLengthInGroup,
+                    count: countInGroup,
+                    metricValue: (scalingMethod === 'length' ? totalLengthInGroup : countInGroup)
+                };
+            });
+        }
         
-        taxaData.forEach(taxonInfo => {
-          if (taxonInfo.metric === 0) return;
-          const taxonBarWidth = (taxonInfo.metric / totalMagMetric) * availableRightWidth - 2;
-          if (taxonBarWidth <= 0) return;
-          d3.select(this).append('rect').attr('x', currentX).attr('y', 0).attr('width', taxonBarWidth).attr('height', rowVisualHeight)
-            .attr('fill', colorScaleChart(taxonInfo.taxon))
+        if (plottedTaxaDetails.length === 0) return; // If no data to plot for this MAG, skip
+
+        plottedTaxaDetails.sort((a, b) => b.metricValue - a.metricValue);
+
+        // 3. Calculate overall scale for the MAG's right plot bar
+        let totalMagMetricForScaling;
+        if (scalingMethod === 'length') {
+            totalMagMetricForScaling = d.total_length; 
+        } else {
+            let totalIndividualContigsInMAG = 0;
+            Object.values(contigsMap).forEach(contigList => { totalIndividualContigsInMAG += (contigList || []).length; });
+            totalMagMetricForScaling = totalIndividualContigsInMAG;
+        }
+
+        const availableRightWidth = rightPlotScale(totalMagMetricForScaling);
+        const sumOfPlottedMetrics = d3.sum(plottedTaxaDetails, ti => ti.metricValue);
+
+        // 4. Draw the bars
+        let currentX = rightPlotStartX + 2; 
+        plottedTaxaDetails.forEach(taxonInfo => {
+            if (taxonInfo.metricValue === 0 || sumOfPlottedMetrics === 0) return;
+
+            const proportionOfTotalPlotted = taxonInfo.metricValue / sumOfPlottedMetrics;
+            let taxonBarWidth = proportionOfTotalPlotted * availableRightWidth;
+            
+            // Ensure minimum visible width for very small segments if they are the only one or few
+            // taxonBarWidth = Math.max(taxonBarWidth, 0.5);
+            taxonBarWidth -= 2; // Subtract padding after potential Math.max
+            if (taxonBarWidth <= 0 && proportionOfTotalPlotted > 0) taxonBarWidth = 0.5; // Miniscule bar if it has data but rounds down due to padding
+            else if (taxonBarWidth <= 0) return;
+
+
+            d3.select(this).append('rect').attr('x', currentX).attr('y', 0).attr('width', taxonBarWidth).attr('height', rowVisualHeight)
+            .attr('fill', colorScaleChart(taxonInfo.colorKey))
             .attr('rx', 6)
             .on('mousemove', e => {
-              positionTooltip(e, `Taxon Group: ${parseUserFriendlyTaxonomy(taxonInfo.taxon)}<br/>Contig Count: ${taxonInfo.count}<br/>Total Length in Group: ${taxonInfo.totalLength.toLocaleString()} bp<br/>Assembly Length: ${d.total_length.toLocaleString()} bp`);
+              const tooltipText = `Taxon Group: ${parseUserFriendlyTaxonomy(taxonInfo.taxonDisplay)}` +
+                              `${selectedCollapseLevel !== "none" ? " (collapsed)" : ""}<br/>` +
+                              `Contig Count: ${taxonInfo.count.toLocaleString()}<br/>` +
+                              `Total Length in Group: ${taxonInfo.totalLength.toLocaleString()} bp<br/>` +
+                              `MAG Assembly Length: ${d.total_length.toLocaleString()} bp`;
+              positionTooltip(e, tooltipText);
             }).on('mouseout', () => tooltip.style('opacity',0));
           currentX += taxonBarWidth + 2;
         });
@@ -1787,6 +1876,7 @@
       renderChart(); // Initial render
       updateContaminationValueDisplay(); // Initial call to set display value
       updateCompletenessValueDisplay(); // Initial call for completeness display
+      d3.select("#collapse-level-select").property("value", "none"); // Ensure default is no collapse
     }).catch(function(error) {
       console.error("Error loading the data: ", error);
       warning.text("Error loading visualization data. Please check the console.").style('display', 'block');
@@ -1998,7 +2088,7 @@
     }
 
     // Update event listeners
-    d3.selectAll('#sample-select,#sort-select,#order-select,#scaling-select,#classification-level-select').on('change', renderChart);
+    d3.selectAll('#sample-select,#sort-select,#order-select,#scaling-select,#classification-level-select,#collapse-level-select').on('change', renderChart);
     
     contThresholdSlider.on('input', function() {
     renderChart();

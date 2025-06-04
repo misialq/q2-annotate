@@ -228,7 +228,37 @@ def extract_assigned_taxonomy_fallback(contigs_data):
     return "Unassigned"
 
 
-def parse_kraken2_output(output_file, taxonomy_map):
+def parse_coverage_file(coverage_file):
+    """Parse coverage TSV file to get coverage data per contig per sample."""
+    print(f"Parsing coverage file: {coverage_file}")
+    
+    coverage_data = {}
+    
+    try:
+        # Read coverage file
+        df = pd.read_csv(coverage_file, sep='\t')
+        
+        # Get sample columns (all columns except the first one which is OTU ID)
+        sample_columns = [col for col in df.columns if col != '#OTU ID']
+        
+        for _, row in df.iterrows():
+            contig_id = row['#OTU ID']
+            coverage_data[contig_id] = {}
+            
+            # Extract coverage for each sample
+            for sample_col in sample_columns:
+                coverage_value = row[sample_col]
+                coverage_data[contig_id][sample_col] = coverage_value
+        
+        print(f"Loaded coverage data for {len(coverage_data)} contigs across {len(sample_columns)} samples")
+        return coverage_data
+        
+    except Exception as e:
+        print(f"Error parsing coverage file {coverage_file}: {e}")
+        return {}
+
+
+def parse_kraken2_output(output_file, taxonomy_map, coverage_data=None, sample_id=None):
     """Parse a single Kraken2 output file to get taxonomic assignments."""
     contigs_data = defaultdict(list)
     
@@ -257,16 +287,63 @@ def parse_kraken2_output(output_file, taxonomy_map):
                 if classification == 'C' and taxon_id in taxonomy_map:
                     taxonomy = taxonomy_map[taxon_id]
                     
-                    # Group by taxonomy at reasonable level (up to genus/species)
-                    contigs_data[taxonomy].append({
+                    # Create contig entry
+                    contig_entry = {
+                        'contig_id': contig_id,
                         'specific_taxonomy': taxonomy,
                         'length': length
-                    })
+                    }
+                    
+                    # Add coverage data if available
+                    if coverage_data and contig_id in coverage_data and sample_id:
+                        if sample_id in coverage_data[contig_id]:
+                            contig_entry['coverage'] = coverage_data[contig_id][sample_id]
+                        else:
+                            contig_entry['coverage'] = 0.0
+                    else:
+                        contig_entry['coverage'] = None
+                    
+                    # Group by taxonomy at reasonable level (up to genus/species)
+                    contigs_data[taxonomy].append(contig_entry)
         
     except Exception as e:
         print(f"Error parsing {output_file}: {e}")
     
     return dict(contigs_data)
+
+
+def parse_kraken2_directory(kraken2_dir, taxonomy_map, coverage_data=None):
+    """Parse directory structure containing Kraken2 output files."""
+    print(f"Parsing Kraken2 directory: {kraken2_dir}")
+    
+    mag_taxonomies = {}
+    
+    # Walk through directory structure: sample_id/mag_id.output.txt
+    for sample_dir in os.listdir(kraken2_dir):
+        sample_path = os.path.join(kraken2_dir, sample_dir)
+        
+        if not os.path.isdir(sample_path):
+            continue
+        
+        print(f"Processing sample: {sample_dir}")
+        
+        for filename in os.listdir(sample_path):
+            if filename.endswith('.output.txt'):
+                # Extract MAG ID from filename (remove .output.txt extension)
+                mag_id = filename.replace('.output.txt', '')
+                output_file = os.path.join(sample_path, filename)
+                
+                # Parse Kraken2 output for this MAG
+                contigs_data = parse_kraken2_output(output_file, taxonomy_map, coverage_data, sample_dir)
+                
+                # Store the results
+                mag_taxonomies[mag_id] = {
+                    'sample_id': sample_dir,
+                    'contigs_data': contigs_data
+                }
+    
+    print(f"Processed taxonomic data for {len(mag_taxonomies)} MAGs")
+    return mag_taxonomies
 
 
 def calculate_mag_stats(contigs_data):
@@ -322,40 +399,6 @@ def determine_quality(completeness, contamination):
         return "Low"
 
 
-def parse_kraken2_directory(kraken2_dir, taxonomy_map):
-    """Parse directory structure containing Kraken2 output files."""
-    print(f"Parsing Kraken2 directory: {kraken2_dir}")
-    
-    mag_taxonomies = {}
-    
-    # Walk through directory structure: sample_id/mag_id.output.txt
-    for sample_dir in os.listdir(kraken2_dir):
-        sample_path = os.path.join(kraken2_dir, sample_dir)
-        
-        if not os.path.isdir(sample_path):
-            continue
-        
-        print(f"Processing sample: {sample_dir}")
-        
-        for filename in os.listdir(sample_path):
-            if filename.endswith('.output.txt'):
-                # Extract MAG ID from filename (remove .output.txt extension)
-                mag_id = filename.replace('.output.txt', '')
-                output_file = os.path.join(sample_path, filename)
-                
-                # Parse Kraken2 output for this MAG
-                contigs_data = parse_kraken2_output(output_file, taxonomy_map)
-                
-                # Store the results
-                mag_taxonomies[mag_id] = {
-                    'sample_id': sample_dir,
-                    'contigs_data': contigs_data
-                }
-    
-    print(f"Processed taxonomic data for {len(mag_taxonomies)} MAGs")
-    return mag_taxonomies
-
-
 def clean_nan_values(obj):
     """Recursively clean NaN values from nested data structures, replacing with None."""
     if isinstance(obj, dict):
@@ -379,6 +422,7 @@ def main():
     parser.add_argument('--busco', required=True, help='Path to BUSCO results TSV file')
     parser.add_argument('--kraken2-dir', required=True, help='Path to directory containing Kraken2 output files (sample_id/mag_id.output.txt)')
     parser.add_argument('--taxonomy', required=True, help='Path to taxonomy mapping TSV file')
+    parser.add_argument('--coverage', required=True, help='Path to coverage TSV file (contig coverage per sample)')
     parser.add_argument('--output', required=True, help='Path to output JSON file')
     
     args = parser.parse_args()
@@ -396,11 +440,16 @@ def main():
         print(f"Error: Taxonomy file not found: {args.taxonomy}")
         sys.exit(1)
     
+    if not os.path.exists(args.coverage):
+        print(f"Error: Coverage file not found: {args.coverage}")
+        sys.exit(1)
+    
     try:
         # Parse input files
         busco_data = parse_busco_file(args.busco)
         taxonomy_map = parse_taxonomy_file(args.taxonomy)
-        mag_taxonomies = parse_kraken2_directory(args.kraken2_dir, taxonomy_map)
+        coverage_data = parse_coverage_file(args.coverage)
+        mag_taxonomies = parse_kraken2_directory(args.kraken2_dir, taxonomy_map, coverage_data)
         
         # Combine data and organize by sample
         result = defaultdict(list)
