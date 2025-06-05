@@ -17,6 +17,7 @@ from .kraken2 import (
     database as kraken_db, bracken,
     helpers as kraken_helpers
 )
+from .mag_qc import visualize_mag_quality
 from .metabat2 import metabat2
 from ._utils import (
     get_feature_lengths, multiply_tables, _multiply_tables,
@@ -34,5 +35,6 @@ __all__ = [
     'busco', 'prodigal', 'kraken_helpers', 'filter_derep_mags',
     'filter_mags', 'get_feature_lengths',
     'multiply_tables', '_multiply_tables', '_multiply_tables_pa',
-    '_multiply_tables_relative', 'abundance', 'filter_reads_pangenome'
+    '_multiply_tables_relative', 'abundance', 'filter_reads_pangenome',
+    'visualize_mag_quality'
 ]

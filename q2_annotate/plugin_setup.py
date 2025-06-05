@@ -1901,6 +1901,34 @@ plugin.pipelines.register_function(
     )
 )
 
+plugin.visualizers.register_function(
+    function=q2_annotate.mag_qc.visualize_mag_quality,
+    inputs={
+        "mags": SampleData[MAGs],
+        "busco_results": BUSCOResults,
+        "kraken2_outputs": SampleData[Kraken2Outputs],
+        "mag_taxonomy": FeatureData[Taxonomy],
+        "contig_coverage": FeatureTable[Frequency % Properties("depth")]
+    },
+    parameters={
+        "n_cpus": Int % Range(0, None),
+    },
+    input_descriptions={
+        "mags": "MAGs.",
+        "busco_results": "BUSCO results table.",
+        "kraken2_outputs": "Kraken2 outputs tables.",
+        "mag_taxonomy": "MAG taxonomy table.",
+        "contig_coverage": "Contig coverage table.",
+    },
+    parameter_descriptions={
+        "n_cpus": "Number of CPU cores to use.",
+    },
+    name="Visualize MAG quality.",
+    description="This method generates a visualization "
+                "for interactive exploration of MAG quality.",
+    citations=[],
+)
+
 plugin.register_semantic_types(BUSCOResults, BUSCO)
 plugin.register_formats(
     BUSCOResultsFormat, BUSCOResultsDirectoryFormat, BuscoDatabaseDirFmt
