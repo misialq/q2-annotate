@@ -18,7 +18,8 @@ from pandas._testing import assert_frame_equal
 from q2_types.per_sample_sequences import (
     SingleLanePerSamplePairedEndFastqDirFmt,
     SingleLanePerSampleSingleEndFastqDirFmt,
-    CasavaOneEightSingleLanePerSampleDirFmt
+    CasavaOneEightSingleLanePerSampleDirFmt,
+    ContigSequencesDirFmt
 )
 
 from q2_annotate.kaiju.classification import (
@@ -45,6 +46,8 @@ class TestKaijuClassification(TestPluginBase):
             ('feature_table', 'merge_taxa'): self.mock_merge_taxa,
             ('demux', 'partition_samples_single'): self.mock_partition_single,
             ('demux', 'partition_samples_paired'): self.mock_partition_paired,
+            ('assembly', 'partition_contigs'): self.mock_partition_contigs,
+            ('types', 'partition_sample_data_mags'): self.mock_partition_mags,
         }[domain, action_name]
 
         # Additional action mocks
@@ -52,9 +55,13 @@ class TestKaijuClassification(TestPluginBase):
         self.mock_merge_taxa = MagicMock(return_value=("merged_taxa",))
         self.mock_partition_single = MagicMock()
         self.mock_partition_paired = MagicMock()
+        self.mock_partition_contigs = MagicMock()
+        self.mock_partition_mags = MagicMock()
 
         self.mock_partition_single.return_value = {'part1': Mock()}
         self.mock_partition_paired.return_value = {'part1': Mock()}
+        self.mock_partition_contigs.return_value = {'part1': Mock()}
+        self.mock_partition_mags.return_value = {'part1': Mock()}
         self.classify_kaiju = annotate.pipelines.classify_kaiju
         with open(self.get_data_path('taxa-map.json')) as f:
             self.taxa_map = json.load(f)
@@ -206,6 +213,33 @@ class TestKaijuClassification(TestPluginBase):
         seqs = SingleLanePerSampleSingleEndFastqDirFmt(
             self.get_data_path("single-end"), "r"
         )
+        r_out = r".*sample1.out,.*sample2.out"
+        r_in = r".*reads1_R1.fastq.gz,.*reads2_R1.fastq.gz"
+        self.classify_kaiju_test_helper(p1, p2, seqs, r_in, r_out)
+
+    @patch("subprocess.run")
+    @patch("q2_annotate.kaiju.classification._process_kaiju_reports")
+    def test_classify_kaiju_paired(self, p1, p2):
+        seqs = SingleLanePerSamplePairedEndFastqDirFmt(
+            self.get_data_path("paired-end"), "r"
+        )
+        r_out = r".*sample1.out,.*sample2.out"
+        r_in = r".*reads1_R2.fastq.gz,.*reads2_R2.fastq.gz"
+        r_paired = r".*reads1_R1.fastq.gz,.*reads2_R1.fastq.gz"
+
+        self.classify_kaiju_test_helper(p1, p2, seqs, r_in, r_out, r_paired)
+
+    @patch("subprocess.run")
+    @patch("q2_annotate.kaiju.classification._process_kaiju_reports")
+    def test_classify_kaiju_contigs(self, p1, p2):
+        seqs = ContigSequencesDirFmt(
+            self.get_data_path("contigs"), "r"
+        )
+        r_out = r".*sample1.out,.*sample2.out"
+        r_in = r".*sample1_contigs.fasta,.*sample2_contigs.fasta"
+        self.classify_kaiju_test_helper(p1, p2, seqs, r_in, r_out)
+
+    def classify_kaiju_test_helper(self, p1, p2, seqs, r_in, r_out, r_paired=None):
         db_path = self.temp_dir.name
         open(os.path.join(db_path, "kaiju_123.fmi"), "w").close()
         p1.return_value = [pd.DataFrame(), pd.DataFrame()]
@@ -226,50 +260,13 @@ class TestKaijuClassification(TestPluginBase):
         ]
         obs_cmd = p2.call_args.args[0]
 
+        if r_paired:
+            self.assertRegex(obs_cmd[-5], r_paired)
+            exp_cmd[21:2] = ["-j", ANY]
+
+        self.assertRegex(obs_cmd[-1], r_out)
+        self.assertRegex(obs_cmd[-3], r_in)
         p2.assert_called_once_with(exp_cmd, check=True)
-        self.assertRegex(
-            obs_cmd[-1], r".*sample1.out,.*sample2.out"
-        )
-        self.assertRegex(
-            obs_cmd[-3], r".*reads1_R1.fastq.gz,.*reads2_R1.fastq.gz"
-        )
-
-    @patch("subprocess.run")
-    @patch("q2_annotate.kaiju.classification._process_kaiju_reports")
-    def test_classify_kaiju_paired(self, p1, p2):
-        seqs = SingleLanePerSamplePairedEndFastqDirFmt(
-            self.get_data_path("paired-end"), "r"
-        )
-        db_path = self.temp_dir.name
-        open(os.path.join(db_path, "kaiju_123.fmi"), "w").close()
-        p1.return_value = [pd.DataFrame(), pd.DataFrame()]
-
-        with patch("tempfile.TemporaryDirectory"):
-            _classify_kaiju(
-                seqs=seqs, db=Mock(path=self.temp_dir.name),
-                z=3, a="greedy", e=2, m=10, s=66, evalue=0, x=True,
-                r="class", c=0.1, exp=False, u=False
-            )
-
-        exp_cmd = [
-            "kaiju-multi", "-v", "-z", "3", "-a", "greedy", "-e", "2",
-            "-m", "10", "-s", "66", "-E", "0", "-x",
-            "-t", os.path.join(db_path, "nodes.dmp"),
-            "-f", os.path.join(db_path, "kaiju_123.fmi"),
-            "-i", ANY, "-j", ANY, "-o", ANY
-        ]
-        obs_cmd = p2.call_args.args[0]
-
-        p2.assert_called_once_with(exp_cmd, check=True)
-        self.assertRegex(
-            obs_cmd[-1], r".*sample1.out,.*sample2.out"
-        )
-        self.assertRegex(
-            obs_cmd[-3], r".*reads1_R2.fastq.gz,.*reads2_R2.fastq.gz"
-        )
-        self.assertRegex(
-            obs_cmd[-5], r".*reads1_R1.fastq.gz,.*reads2_R1.fastq.gz"
-        )
 
     @patch("subprocess.run", side_effect=CalledProcessError(1, "hello"))
     def test_classify_kaiju_exception(self, p1):
@@ -428,6 +425,37 @@ class TestKaijuClassification(TestPluginBase):
         self.mock_merge_taxa.assert_called_once_with(
             ["taxonomy1", "taxonomy2"]
         )
+        self.assertEqual("merged_table", out_table)
+        self.assertEqual("merged_taxa", out_taxonomy)
+
+    def test_classify_kaiju_single_partition_contigs(self):
+        fake_seqs = qiime2.Artifact.import_data(
+            "SampleData[Contigs]",
+            self.get_data_path("contigs"),
+            ContigSequencesDirFmt
+        )
+        fake_db = Mock()
+
+        self.mock_partition_contigs.side_effect = [({0: "part1"},)]
+
+        out_table, out_taxonomy = classify_kaiju(
+            self.ctx, fake_seqs, fake_db, num_partitions=1
+        )
+
+        self.ctx.get_action.assert_any_call("annotate", "_classify_kaiju")
+        self.ctx.get_action.assert_any_call("feature_table", "merge")
+        self.ctx.get_action.assert_any_call("feature_table", "merge_taxa")
+        self.ctx.get_action.assert_any_call(
+            "assembly", "partition_contigs"
+        )
+
+        self.mock_partition_contigs.assert_called_once_with(fake_seqs, 1)
+        self.mock_classify_kaiju.assert_called_once_with(
+            "part1", fake_db, z=1, a='greedy', e=3, m=11, s=65, evalue=0.01,
+            x=True, r='species', c=0.0, exp=False, u=False
+        )
+        self.mock_merge.assert_called_once_with(["table1"])
+        self.mock_merge_taxa.assert_called_once_with(["taxonomy1"])
         self.assertEqual("merged_table", out_table)
         self.assertEqual("merged_taxa", out_taxonomy)
 
