@@ -25,6 +25,13 @@ from q2_annotate.busco.types import (
     BUSCOResults,
     BUSCO,
 )
+from q2_annotate.gunc.types import (
+    GUNCResultsFormat,
+    GUNCResultsDirectoryFormat,
+    GUNCDatabaseDirFmt,
+    GUNCResults,
+    GUNCDB,
+)
 from q2_types.bowtie2 import Bowtie2Index
 from q2_types.profile_hmms import ProfileHMM, MultipleProtein, PressedProtein
 from q2_types.distance_matrix import DistanceMatrix
@@ -137,6 +144,7 @@ plugin = Plugin(
 
 importlib.import_module("q2_annotate.eggnog")
 importlib.import_module("q2_annotate.metabat2")
+importlib.import_module("q2_annotate.gunc")
 
 plugin.methods.register_function(
     function=q2_annotate.metabat2.bin_contigs_metabat,
@@ -2049,6 +2057,48 @@ plugin.pipelines.register_function(
     ),
 )
 
+plugin.methods.register_function(
+    function=q2_annotate.gunc.download_gunc_db,
+    inputs={},
+    parameters={"database": Str % Choices("progenomes", "gtdb")},
+    outputs=[("db", ReferenceDB[GUNCDB])],
+    input_descriptions={},
+    parameter_descriptions={"database": "Which database to download."},
+    output_descriptions={"db": "GUNC database."},
+    name="Download GUNC database.",
+    description="Download the reference database required by GUNC.",
+    citations=[citations["orakov_gunc_2021"]],
+)
+
+plugin.methods.register_function(
+    function=q2_annotate.gunc.run_gunc,
+    inputs={"mags": SampleData[MAGs] | FeatureData[MAG], "db": ReferenceDB[GUNCDB]},
+    parameters={
+        "threads": Int % Range(1, None),
+        "sensitive": Bool,
+        "detailed_output": Bool,
+        "contig_taxonomy_output": Bool,
+        "use_species_level": Bool,
+        "min_mapped_genes": Int % Range(0, None),
+    },
+    outputs={"results": GUNCResults},
+    input_descriptions={"mags": "MAGs to evaluate.", "db": "GUNC database."},
+    parameter_descriptions={
+        "threads": "Number of threads.",
+        "sensitive": "Run with high sensitivity.",
+        "detailed_output": "Output scores for every taxlevel.",
+        "contig_taxonomy_output": "Output assignments for each contig.",
+        "use_species_level": "Allow species level to be picked as maxCSS.",
+        "min_mapped_genes": (
+            "Dont calculate GUNC score if number of mapped genes is below this value."
+        ),
+    },
+    output_descriptions={"results": "GUNC results table."},
+    name="Detect chimerism and contamination using GUNC.",
+    description="Run GUNC to evaluate MAG quality.",
+    citations=[citations["orakov_gunc_2021"]],
+)
+
 plugin.register_semantic_types(BUSCOResults, BUSCO)
 plugin.register_formats(
     BUSCOResultsFormat, BUSCOResultsDirectoryFormat, BuscoDatabaseDirFmt
@@ -2062,3 +2112,8 @@ importlib.import_module("q2_annotate.busco.types._transformer")
 plugin.register_formats(EggnogHmmerIdmapFileFmt, EggnogHmmerIdmapDirectoryFmt)
 plugin.register_semantic_types(EggnogHmmerIdmap)
 plugin.register_semantic_type_to_format(EggnogHmmerIdmap, EggnogHmmerIdmapDirectoryFmt)
+
+plugin.register_formats(GUNCResultsFormat, GUNCResultsDirectoryFormat, GUNCDatabaseDirFmt)
+plugin.register_semantic_types(GUNCResults, GUNCDB)
+plugin.register_semantic_type_to_format(GUNCResults, GUNCResultsDirectoryFormat)
+plugin.register_semantic_type_to_format(ReferenceDB[GUNCDB], GUNCDatabaseDirFmt)

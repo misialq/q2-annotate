@@ -19,6 +19,7 @@ from .kraken2 import (
     helpers as kraken_helpers,
 )
 from .metabat2 import metabat2
+from . import gunc
 from ._utils import (
     get_feature_lengths,
     multiply_tables,
@@ -43,6 +44,7 @@ __all__ = [
     "eggnog",
     "busco",
     "prodigal",
+    "gunc",
     "kraken_helpers",
     "filter_derep_mags",
     "filter_mags",
