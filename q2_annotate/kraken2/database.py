@@ -17,7 +17,6 @@ from typing import List
 
 import requests
 import xmltodict
-import xml.etree.ElementTree as ET
 from q2_types.feature_data import DNAFASTAFormat
 from tqdm import tqdm
 

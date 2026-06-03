@@ -16,7 +16,7 @@ import requests
 from requests.exceptions import ConnectionError
 from subprocess import CalledProcessError
 from tempfile import TemporaryDirectory
-from unittest.mock import patch, ANY, call, Mock, MagicMock
+from unittest.mock import patch, ANY, call, MagicMock
 from parameterized import parameterized
 
 import pandas as pd
