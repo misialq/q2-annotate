@@ -1769,7 +1769,7 @@ I_reads, O_reads = TypeMap(
 )
 
 plugin.pipelines.register_function(
-    function=q2_annotate.filtering.construct_pangenome_index,
+    function=q2_annotate.filtering.construct_human_pangenome_index,
     inputs={},
     parameters={"threads": Threads},
     outputs=[("index", Bowtie2Index)],
@@ -1787,7 +1787,7 @@ plugin.pipelines.register_function(
 )
 
 plugin.pipelines.register_function(
-    function=q2_annotate.filtering.filter_reads_pangenome,
+    function=q2_annotate.filtering.filter_reads_human_pangenome,
     inputs={"reads": I_reads, "index": Bowtie2Index},
     parameters={
         "threads": Threads,
