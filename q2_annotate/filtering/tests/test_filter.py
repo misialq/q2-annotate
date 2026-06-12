@@ -5,25 +5,11 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
-import filecmp
-import os
-import shutil
-import tempfile
 import unittest
-from unittest.mock import Mock, patch, ANY, call, MagicMock
 
 import pandas as pd
 import qiime2
 
-from q2_annotate.filtering.filter_pangenome import (
-    _fetch_and_extract_grch38,
-    _extract_fasta_from_gfa,
-    _fetch_and_extract_pangenome,
-    filter_reads_human_pangenome,
-    _combine_fasta_files,
-    EBI_SERVER_URL,
-    construct_human_pangenome_index,
-)
 from qiime2.plugin.testing import TestPluginBase
 
 from q2_annotate.busco.types import BUSCOResultsFormat
