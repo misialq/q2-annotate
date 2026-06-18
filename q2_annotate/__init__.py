@@ -15,6 +15,7 @@ from .kraken2 import (
     bracken,
     helpers as kraken_helpers,
 )
+from .tfa import tfa
 
 try:
     from ._version import __version__
@@ -31,4 +32,5 @@ __all__ = [
     "prodigal",
     "kraken_helpers",
     "filter_reads_human_pangenome",
+    "tfa"
 ]

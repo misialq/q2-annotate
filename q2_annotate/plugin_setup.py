@@ -1691,6 +1691,33 @@ plugin.pipelines.register_function(
     ),
 )
 
+plugin.methods.register_function(
+    function=q2_annotate.tfa.estimate_tfa,
+    inputs={
+        "abundance_matrix": FeatureTable[Frequency],
+        "feature_inventory": FeatureTable[Frequency],
+        "taxonomy": FeatureData[Taxonomy],
+        "taxon_to_contig_map": FeatureMap[TaxonomyToContigs],
+    },
+    parameters={},
+    outputs={
+        "feature_load": FeatureTable[Frequency],
+    },
+    input_descriptions={
+        "abundance_matrix": "",
+        "feature_inventory": "",
+        "taxonomy": "",
+        "taxon_to_contig_map": "",
+    },
+    parameter_descriptions={},
+    output_descriptions={
+        "feature_load": "",
+    },
+    name="",
+    description="",
+    citations=[],
+)
+
 
 plugin.register_formats(EggnogHmmerIdmapFileFmt, EggnogHmmerIdmapDirectoryFmt)
 plugin.register_semantic_types(EggnogHmmerIdmap)
