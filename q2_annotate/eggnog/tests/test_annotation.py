@@ -19,6 +19,7 @@ from q2_annotate.eggnog.annotation import (
     _extract_generic,
     _merge_maps,
 )
+
 from q2_types.genome_data import (
     OrthologAnnotationDirFmt,
     SeedOrthologDirFmt,

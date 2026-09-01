@@ -12,7 +12,16 @@ from .orthologs import (
     _eggnog_hmmer_search,
     _eggnog_feature_table,
 )
-from .annotation import map_eggnog, _eggnog_annotate, extract_annotations
+from .annotation import (
+    map_eggnog,
+    _eggnog_annotate,
+    extract_annotations,
+)
+from .transfer import (
+    _transfer_annotations_from_contigs,
+    _transfer_annotations_from_mags,
+    transfer_eggnog_annotations,
+)
 from .dbs import (
     fetch_eggnog_db,
     fetch_diamond_db,
@@ -39,4 +48,7 @@ __all__ = [
     "search_orthologs_hmmer",
     "_eggnog_hmmer_search",
     "extract_annotations",
+    "_transfer_annotations_from_contigs",
+    "_transfer_annotations_from_mags",
+    "transfer_eggnog_annotations",
 ]
