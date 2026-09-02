@@ -50,11 +50,7 @@ def estimate_tfa(
         cid: idx for idx, cid in enumerate(abundance_matrix.ids(axis="observation"))
     }
     abund_indices = [abund_contig_index[cid] for cid in common_contigs]
-
-    if sp.issparse(abundance_matrix.matrix_data):
-        abundance_matrix_sparse = abundance_matrix.matrix_data.tocsr()
-    else:
-        abundance_matrix_sparse = abundance_matrix.matrix_data
+    abundance_matrix_sparse = abundance_matrix.matrix_data.tocsr()
 
     A = abundance_matrix_sparse[abund_indices, :]
 
@@ -64,26 +60,16 @@ def estimate_tfa(
         cid: idx for idx, cid in enumerate(feature_inventory.ids(axis="sample"))
     }
     feat_indices = [feat_contig_index[cid] for cid in common_contigs]
-
-    if sp.issparse(feature_inventory.matrix_data):
-        feature_inventory_sparse = feature_inventory.matrix_data.tocsc()
-    else:
-        feature_inventory_sparse = feature_inventory.matrix_data
+    feature_inventory_sparse = feature_inventory.matrix_data.tocsc()
 
     I_sliced = feature_inventory_sparse[:, feat_indices]
     I = I_sliced.T  # noqa: E741
 
     # Compute total abundance of each contig across all samples (row sum of A)
-    if sp.issparse(A):
-        a_c = np.asarray(A.sum(axis=1)).flatten()
-    else:
-        a_c = A.sum(axis=1).flatten()
+    a_c = np.asarray(A.sum(axis=1)).flatten()
 
     # Scale the feature inventory by contig abundances
-    if sp.issparse(I):
-        M = sp.diags(a_c) @ I
-    else:
-        M = a_c[:, np.newaxis] * I
+    M = sp.diags(a_c) @ I
 
     # Group by taxon ID using a sparse grouping matrix G
     taxon_ids_list = np.array([contig_to_taxon_id[cid] for cid in common_contigs])
