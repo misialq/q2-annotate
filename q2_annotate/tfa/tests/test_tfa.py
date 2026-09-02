@@ -57,7 +57,8 @@ class TestAbundance(TestPluginBase):
         }
 
     def test_tfa(self):
-        # Convert df_tpm to biom.Table (transposed so that Contigs are observations, Samples are samples)
+        # Convert df_tpm to biom.Table
+        # (transposed so that Contigs are observations, Samples are samples)
         tpm_df = self.df_tpm.T
         tpm_biom = biom.Table(
             tpm_df.values,
@@ -77,18 +78,18 @@ class TestAbundance(TestPluginBase):
         # T1 represents "Escherichia coli", T2 represents "Klebsiella pneumoniae"
         taxonomy_df = pd.DataFrame(
             {"Taxon": ["Escherichia coli", "Klebsiella pneumoniae"]},
-            index=pd.Index(["T1", "T2"], name="id")
+            index=pd.Index(["T1", "T2"], name="id"),
         )
 
-        obs_biom = estimate_tfa(tpm_biom, amr_biom, taxonomy_df, self.taxon_to_contig_map)
+        obs_biom = estimate_tfa(
+            tpm_biom, amr_biom, taxonomy_df, self.taxon_to_contig_map
+        )
         obs_df = obs_biom.to_dataframe(dense=True)
         obs_df.index = obs_df.index.map(taxonomy_df["Taxon"])
 
         exp = pd.DataFrame(
             {"bla_TEM": [620, 150], "mecA": [0, 450], "vanA": [310, 0]},
-            index=pd.Index(
-                ["Escherichia coli", "Klebsiella pneumoniae"], name="Taxon"
-            ),
+            index=pd.Index(["Escherichia coli", "Klebsiella pneumoniae"], name="Taxon"),
         )
         exp.columns.name = "feature_id"
 

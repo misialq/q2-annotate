@@ -30,5 +30,5 @@ __all__ = [
     "eggnog",
     "prodigal",
     "kraken_helpers",
-    "tfa"
+    "tfa",
 ]

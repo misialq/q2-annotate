@@ -27,9 +27,11 @@ def estimate_tfa(
                     contig_to_taxon_id[cid] = taxon_id
 
     # Find the intersection of contig IDs across all inputs
-    common_contigs = set(abundance_matrix.ids(axis="observation")) & \
-                     set(feature_inventory.ids(axis="sample")) & \
-                     set(contig_to_taxon_id.keys())
+    common_contigs = (
+        set(abundance_matrix.ids(axis="observation"))
+        & set(feature_inventory.ids(axis="sample"))
+        & set(contig_to_taxon_id.keys())
+    )
 
     feature_ids = feature_inventory.ids(axis="observation")
 
@@ -56,7 +58,8 @@ def estimate_tfa(
 
     A = abundance_matrix_sparse[abund_indices, :]
 
-    # Slice and align the feature inventory matrix (observations x features, with contigs as samples)
+    # Slice and align the feature inventory matrix
+    # (observations x features, with contigs as samples)
     feat_contig_index = {
         cid: idx for idx, cid in enumerate(feature_inventory.ids(axis="sample"))
     }
@@ -68,7 +71,7 @@ def estimate_tfa(
         feature_inventory_sparse = feature_inventory.matrix_data
 
     I_sliced = feature_inventory_sparse[:, feat_indices]
-    I = I_sliced.T
+    I = I_sliced.T  # noqa: E741
 
     # Compute total abundance of each contig across all samples (row sum of A)
     if sp.issparse(A):
