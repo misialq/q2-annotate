@@ -1,12 +1,14 @@
 # ----------------------------------------------------------------------------
-# Copyright (c) 2025, QIIME 2 development team.
+# Copyright (c) 2026, QIIME 2 development team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 import subprocess
+
 from collections import defaultdict
+
 
 import pandas as pd
 
@@ -216,7 +218,9 @@ def extract_annotations(
         annot_df = pd.read_csv(
             fp, sep="\t", skiprows=4, index_col=0
         )  # skip the first 4 rows as they contain comments
-        annot_df = annot_df.iloc[:-3, :]  # remove the last 3 comment rows
+        # strip trailing comment rows (footer) only if present
+        if annot_df.index[-3:].astype(str).str.startswith("##").all():
+            annot_df = annot_df.iloc[:-3, :]
         annot_df = _filter(annot_df, max_evalue, min_score)
 
         # get feature map, annotation counts, and contig annotation counts
@@ -231,8 +235,6 @@ def extract_annotations(
 
     result = pd.concat(annotations, axis=1).fillna(0).T
     result.index.name = "id"
-
     merged_maps = _merge_maps(feature_maps)
     contig_result = pd.concat(contig_counts, axis=0).fillna(0)
-
     return result, dict(merged_maps), contig_result

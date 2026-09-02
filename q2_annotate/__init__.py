@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------------
-# Copyright (c) 2025, QIIME 2 development team.
+# Copyright (c) 2026, QIIME 2 development team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
@@ -7,7 +7,6 @@
 # ----------------------------------------------------------------------------
 from . import eggnog
 from . import prodigal
-from .filtering import filter_reads_human_pangenome
 from .kaiju import classification as kaiju_class, database as kaiju_db
 from .kraken2 import (
     classification as kraken_class,
@@ -31,6 +30,5 @@ __all__ = [
     "eggnog",
     "prodigal",
     "kraken_helpers",
-    "filter_reads_human_pangenome",
     "tfa"
 ]

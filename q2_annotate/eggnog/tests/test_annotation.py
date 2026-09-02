@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------------
-# Copyright (c) 2025, QIIME 2 development team.
+# Copyright (c) 2026, QIIME 2 development team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
@@ -19,6 +19,7 @@ from q2_annotate.eggnog.annotation import (
     _extract_generic,
     _merge_maps,
 )
+
 from q2_types.genome_data import (
     OrthologAnnotationDirFmt,
     SeedOrthologDirFmt,
@@ -54,7 +55,8 @@ class TestAnnotate(TestPluginBase):
 
     def test_eggnog_annotate_parallel(self):
         orthologs = qiime2.Artifact.import_data(
-            "SampleData[Orthologs]", self.get_data_path("good_hits/")
+            "SampleData[Orthologs % Properties('contigs')]",
+            self.get_data_path("good_hits/"),
         )
 
         with self.test_config:
