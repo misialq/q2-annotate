@@ -98,3 +98,29 @@ class TestAbundance(TestPluginBase):
         obs_df = obs_df.reindex(index=exp.index, columns=exp.columns)
 
         pd.testing.assert_frame_equal(obs_df, exp, check_dtype=False)
+
+    def test_tfa_no_common_contigs(self):
+        tpm_df = self.df_tpm.T
+        tpm_biom = biom.Table(
+            tpm_df.values,
+            observation_ids=list(tpm_df.index),
+            sample_ids=list(tpm_df.columns),
+        )
+
+        amr_df = self.df_amr.T
+        amr_biom = biom.Table(
+            amr_df.values,
+            observation_ids=list(amr_df.index),
+            sample_ids=list(amr_df.columns),
+        )
+
+        obs_biom = estimate_tfa(
+            tpm_biom,
+            amr_biom,
+            self.df_taxon,
+            {"T1": ["not-a-contig"]},
+        )
+
+        self.assertEqual(obs_biom.shape, (0, len(amr_df.index)))
+        self.assertEqual(list(obs_biom.ids(axis="observation")), [])
+        self.assertEqual(list(obs_biom.ids(axis="sample")), list(amr_df.index))
