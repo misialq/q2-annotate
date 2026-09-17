@@ -1751,17 +1751,37 @@ plugin.methods.register_function(
         "feature_load": FeatureTable[Frequency],
     },
     input_descriptions={
-        "abundance_matrix": "",
-        "feature_inventory": "",
-        "taxonomy": "",
-        "taxon_to_contig_map": "",
+        "abundance_matrix": (
+            "Contig abundances across samples, with contig IDs as feature IDs."
+        ),
+        "feature_inventory": (
+            "Counts of each functional feature on each contig, with contig "
+            "IDs as sample IDs."
+        ),
+        "taxonomy": (
+            "Taxonomic assignments indexed by the taxon IDs in "
+            "`taxon_to_contig_map`."
+        ),
+        "taxon_to_contig_map": (
+            "Mapping of taxon IDs to the contig IDs assigned to each taxon."
+        ),
     },
     parameter_descriptions={},
     output_descriptions={
-        "feature_load": "",
+        "feature_load": (
+            "Taxonomic Functional Attribution (TFA): abundance-weighted "
+            "functional feature loads per taxon, with taxon IDs as feature "
+            "IDs and functional feature IDs as sample IDs."
+        ),
     },
-    name="",
-    description="",
+    name="Estimate Taxonomic Functional Attribution (TFA).",
+    description=(
+        "Estimate Taxonomic Functional Attribution (TFA) by multiplying each "
+        "contig's functional feature counts by its total abundance across "
+        "samples and summing the resulting loads by taxon. Only contigs shared "
+        "by both tables and mapped to a taxon with a taxonomy assignment are "
+        "included."
+    ),
     citations=[],
 )
 
