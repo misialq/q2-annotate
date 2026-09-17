@@ -187,9 +187,9 @@ class TestAbundance(TestPluginBase):
         abundance = self.df_tpm.copy()
         abundance.index = ["other-1", "other-2", "other-3"]
 
-        observed = self._estimate_from_frames(
-            abundance=abundance
-        ).to_dataframe(dense=True)
+        observed = self._estimate_from_frames(abundance=abundance).to_dataframe(
+            dense=True
+        )
         expected = pd.DataFrame(
             {
                 "bla_TEM": [620, 150],
@@ -265,9 +265,9 @@ class TestAbundance(TestPluginBase):
             index=["S1", "S2", "S3"],
         )
 
-        observed = self._estimate_from_frames(
-            abundance=abundance
-        ).to_dataframe(dense=True)
+        observed = self._estimate_from_frames(abundance=abundance).to_dataframe(
+            dense=True
+        )
         expected = pd.DataFrame(
             {
                 "bla_TEM": [2e-9, 1e12],
