@@ -44,6 +44,7 @@ class TFAFeatureTableFormat(model.BinaryFileFormat):
     def _validate_(self, level):
         try:
             with h5py.File(str(self), mode="r") as handle:
+                # Check the BIOM structure before reading TFA-specific datasets.
                 for group in BIOMV210Format.groups:
                     if group not in handle:
                         raise ValidationError(f"Missing BIOM group: {group}")
@@ -55,8 +56,10 @@ class TFAFeatureTableFormat(model.BinaryFileFormat):
                         raise ValidationError(f"Missing BIOM attribute: {attribute}")
                 ids = handle["observation/ids"]
                 values = handle["observation/matrix/data"]
+                # Minimal validation samples the first 100 IDs and stored values.
                 id_count = min(len(ids), 100) if level == "min" else len(ids)
                 value_count = min(len(values), 100) if level == "min" else len(values)
+                # Read in chunks so full validation does not load the table at once.
                 for start in range(0, id_count, 8192):
                     for raw_id in ids[start : min(start + 8192, id_count)]:
                         try:
