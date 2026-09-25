@@ -9,6 +9,10 @@ in selected taxa in the antibiotic group, along with lower simulated loads
 for some commensal taxa. These patterns are illustration only and should not
 be interpreted as biological findings.
 
+`tfa-explorer-demo.qzv` is a ready-to-open visualization generated from the
+artifacts and metadata below. Open it with `qiime tools view` or upload it to
+QIIME 2 View.
+
 The source files are readable TSVs:
 
 - `tfa-table.tsv`: one row per taxon–function pair, one column per sample;
