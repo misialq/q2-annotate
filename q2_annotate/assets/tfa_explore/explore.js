@@ -4,6 +4,7 @@ const tfa = JSON.parse(document.getElementById("tfa-data").textContent);
 const taxonSelect = document.getElementById("taxon");
 const functionSelect = document.getElementById("function");
 const groupSelect = document.getElementById("group");
+const summarySelect = document.getElementById("summary");
 const limitSelect = document.getElementById("limit");
 const status = document.getElementById("status");
 const schema = "https://vega.github.io/schema/vega-lite/v5.json";
@@ -58,8 +59,39 @@ function sampleValues(pairIndices) {
 }
 
 function plotWidth(id) {
-  const gutter = {heatmap: 170, boxplot: 90, samples: 180}[id];
+  const gutter = {heatmap: 170, "summary-plot": 100, boxplot: 90, samples: 180}[id];
   return Math.max(240, document.getElementById(id).parentElement.clientWidth - gutter);
+}
+
+function summarySpec(samples) {
+  const method = summarySelect.value;
+  const groups = [...new Set(samples.map(sample => sample.group))];
+  const label = {sum: "Sum", mean: "Mean", median: "Median"}[method];
+  return {
+    $schema: schema,
+    data: {values: samples},
+    transform: [{
+      aggregate: [
+        {op: method, field: "load", as: "summary"},
+        {op: "count", field: "load", as: "sample_count"}
+      ],
+      groupby: ["group"]
+    }],
+    width: plotWidth("summary-plot"),
+    height: Math.max(90, Math.min(720, groups.length * 34)),
+    mark: {type: "bar"},
+    encoding: {
+      x: {field: "summary", type: "quantitative", title: `${label} TFA load`, scale: {zero: true}},
+      y: {field: "group", type: "nominal", sort: groups, title: groupSelect.value || "Samples"},
+      color: {field: "group", type: "nominal", legend: null},
+      tooltip: [
+        {field: "group", type: "nominal", title: "Group"},
+        {field: "sample_count", type: "quantitative", title: "Samples"},
+        {field: "summary", type: "quantitative", title: `${label} load`, format: ".4g"}
+      ]
+    },
+    config: {view: {stroke: null}}
+  };
 }
 
 function heatmapSpec(indices) {
@@ -133,14 +165,16 @@ async function draw() {
   activeViews = [];
   const indices = matchedPairs();
   const samples = sampleValues(indices);
-  const total = samples.reduce((sum, row) => sum + row.load, 0);
-  status.textContent = `${indices.length} matching taxon–function pairs · ${samples.length} samples · total load ${total.toLocaleString()}`;
+  const method = summarySelect.value;
+  status.textContent = `${indices.length} matching taxon–function pairs · ${samples.length} samples`;
+  document.getElementById("summary-caption").textContent =
+    `${{sum: "Sum", mean: "Mean", median: "Median"}[method]} of per-sample loads within each group. Zero loads are included.`;
   document.getElementById("group-caption").textContent = groupSelect.value
     ? `Each box compares sample loads for one ${groupSelect.value} category. Zeros are included.`
     : "One box summarizes all samples. Add categorical metadata to compare groups.";
 
   if (!indices.length || !samples.length) {
-    for (const id of ["heatmap", "boxplot", "samples"]) {
+    for (const id of ["heatmap", "summary-plot", "boxplot", "samples"]) {
       document.getElementById(id).textContent = "No values to plot for this selection.";
     }
     return;
@@ -151,12 +185,13 @@ async function draw() {
   }
   try {
     const options = {actions: false, renderer: "svg"};
-    const [heatmap, boxplot, samplePlot] = await Promise.all([
+    const [heatmap, summary, boxplot, samplePlot] = await Promise.all([
       vegaEmbed("#heatmap", heatmapSpec(indices), options),
+      vegaEmbed("#summary-plot", summarySpec(samples), options),
       vegaEmbed("#boxplot", boxplotSpec(samples), options),
       vegaEmbed("#samples", sampleSpec(samples), options)
     ]);
-    activeViews = [heatmap.view, boxplot.view, samplePlot.view];
+    activeViews = [heatmap.view, summary.view, boxplot.view, samplePlot.view];
     heatmap.view.addEventListener("click", (_, item) => {
       const pair = item && item.datum;
       if (pair && pair.taxon && pair.function) {
@@ -176,7 +211,7 @@ function update() {
   });
 }
 
-for (const select of [taxonSelect, functionSelect, groupSelect, limitSelect]) {
+for (const select of [taxonSelect, functionSelect, groupSelect, summarySelect, limitSelect]) {
   select.addEventListener("change", update);
 }
 let resizeTimer;

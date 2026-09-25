@@ -22,6 +22,7 @@
       <label>Taxon <select id="taxon"></select></label>
       <label>Function <select id="function"></select></label>
       <label>Group samples by <select id="group"></select></label>
+      <label>Group summary <select id="summary"><option value="sum">Sum</option><option value="mean">Mean</option><option value="median">Median</option></select></label>
       <label>Heatmap links <select id="limit"><option value="20">Top 20</option><option value="50">Top 50</option><option value="100">Top 100</option></select></label>
     </section>
 
@@ -33,9 +34,15 @@
       <div id="heatmap" class="plot"></div>
     </section>
 
+    <section class="card">
+      <h2>Group summary</h2>
+      <p id="summary-caption"></p>
+      <div id="summary-plot" class="plot"></div>
+    </section>
+
     <section class="grid">
       <div class="card">
-        <h2>Compare sample groups</h2>
+        <h2>Sample distributions by group</h2>
         <p id="group-caption"></p>
         <div id="boxplot" class="plot"></div>
       </div>
@@ -45,7 +52,7 @@
         <div id="samples" class="plot"></div>
       </div>
     </section>
-    <footer>Loads are abundance-weighted function counts. Selecting “All” sums the matching pairs within each sample. Missing metadata is shown as its own group.</footer>
+    <footer>Loads are abundance-weighted function counts. Matching taxon–function pairs are summed within each sample. The group summary applies the selected statistic across samples, including zero loads. Missing metadata is shown as its own group.</footer>
   </main>
   <script id="tfa-data" type="application/json">__TFA_DATA__</script>
 </body>

@@ -45,9 +45,11 @@ taxon/function links by total load; selecting a link shows its per-sample
 loads as a boxplot and a sample bar chart. Select a taxon or function alone
 to sum its matching pairs within each sample. Optional sample metadata adds
 categorical columns to the grouping control, so the boxplot can compare
-sample groups. Samples with zero load and samples missing metadata remain in
-the comparison. The heatmap displays up to 100 links, and the bar chart shows
-the 100 highest-load samples; the boxplot uses all samples. The Vega plots use
+sample groups. A group summary chart can show the sum, mean, or median of
+per-sample loads in each group. Samples with zero load and samples missing
+metadata remain in the comparison. The heatmap displays up to 100 links, and
+the bar chart shows the 100 highest-load samples; the boxplot uses all samples.
+The Vega plots use
 the same CDN scripts as the existing Kraken 2 visualizer, so viewing them
 requires an internet connection.
 

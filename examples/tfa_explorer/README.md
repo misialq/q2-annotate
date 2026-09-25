@@ -37,7 +37,8 @@ qiime annotate explore-tfa \
 ```
 
 Open `tfa-explorer-demo.qzv` with `qiime tools view`. Select
-`treatment_visit` to compare the four groups. Try `blaCTX-M` and
+`treatment_visit` to compare the four groups, then switch the group summary
+between sum, mean, and median. Try `blaCTX-M` and
 `butyryl_CoA_transferase` in the function selector, then select individual
 taxa or click heatmap cells. Omit `--i-taxonomy` to see taxon IDs.
 
