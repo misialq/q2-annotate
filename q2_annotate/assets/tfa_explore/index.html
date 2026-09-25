@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Explore taxonomic functional attribution</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/vega@5/build/vega.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@5/build/vega-lite.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6/build/vega-embed.min.js" defer></script>
+  <script src="explore.js" defer></script>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">QIIME 2 · FeatureTable[TFA]</p>
+      <h1>Explore taxon–function links</h1>
+      <p>Select a taxon, a function, or both. The heatmap ranks links by total load. The plots below compare loads across the original samples, including zero values.</p>
+    </header>
+
+    <section class="controls" aria-label="Explorer controls">
+      <label>Taxon <select id="taxon"></select></label>
+      <label>Function <select id="function"></select></label>
+      <label>Group samples by <select id="group"></select></label>
+      <label>Heatmap links <select id="limit"><option value="20">Top 20</option><option value="50">Top 50</option><option value="100">Top 100</option></select></label>
+    </section>
+
+    <p id="status" role="status"></p>
+
+    <section class="card">
+      <h2>Taxon–function links</h2>
+      <p>Each square is one observed pair; color shows its load summed over samples. Click a square to inspect that pair.</p>
+      <div id="heatmap" class="plot"></div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>Compare sample groups</h2>
+        <p id="group-caption"></p>
+        <div id="boxplot" class="plot"></div>
+      </div>
+      <div class="card">
+        <h2>Individual samples</h2>
+        <p>The 100 samples with the highest loads are shown; the group comparison uses every sample.</p>
+        <div id="samples" class="plot"></div>
+      </div>
+    </section>
+    <footer>Loads are abundance-weighted function counts. Selecting “All” sums the matching pairs within each sample. Missing metadata is shown as its own group.</footer>
+  </main>
+  <script id="tfa-data" type="application/json">__TFA_DATA__</script>
+</body>
+</html>
