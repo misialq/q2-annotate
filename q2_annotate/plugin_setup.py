@@ -25,7 +25,15 @@ from q2_types.feature_table import (
     FeatureTable,
     Frequency,
     PresenceAbsence,
+    RelativeFrequency,
+    Unconstrained,
 )
+from q2_annotate.tfa import (
+    TFAFeatureTableDirFmt,
+    TFAFeatureTableFormat,
+    TFA,
+)
+from q2_annotate.tfa.tfa import estimate_tfa
 from q2_types.per_sample_sequences import (
     SequencesWithQuality,
     PairedEndSequencesWithQuality,
@@ -1738,53 +1746,87 @@ plugin.pipelines.register_function(
     ),
 )
 
+plugin.register_formats(TFAFeatureTableFormat, TFAFeatureTableDirFmt)
+plugin.register_semantic_types(TFA)
+plugin.register_artifact_class(
+    FeatureTable[TFA],
+    directory_format=TFAFeatureTableDirFmt,
+    description=(
+        "Taxonomic Functional Attribution (TFA): a sparse table of "
+        "abundance-weighted functional loads, with original sample IDs as "
+        "columns and JSON-encoded [taxon ID, function ID] pairs as feature "
+        "IDs. Values are nonnegative real numbers."
+    ),
+)
+
+importlib.import_module("q2_annotate.tfa.types._transformer")
+
+tfa_inputs = {
+    "abundance_matrix": FeatureTable[Frequency | RelativeFrequency | Unconstrained],
+    "feature_inventory": FeatureTable[Frequency],
+    "taxonomy": FeatureData[Taxonomy],
+    "taxon_to_contig_map": FeatureMap[TaxonomyToContigs],
+}
+tfa_input_descriptions = {
+    "abundance_matrix": (
+        "Nonnegative contig abundances across samples, with contig IDs "
+        "as feature IDs. Counts, relative frequencies, and normalized "
+        "loads are accepted."
+    ),
+    "feature_inventory": (
+        "Counts of each functional feature on each contig, with contig "
+        "IDs as sample IDs."
+    ),
+    "taxonomy": (
+        "Taxonomic assignments indexed by the taxon IDs in " "`taxon_to_contig_map`."
+    ),
+    "taxon_to_contig_map": (
+        "Mapping of taxon IDs to the contig IDs assigned to each taxon."
+    ),
+}
+
 plugin.methods.register_function(
-    function=q2_annotate.tfa.estimate_tfa,
-    inputs={
-        "abundance_matrix": FeatureTable[Frequency],
-        "feature_inventory": FeatureTable[Frequency],
-        "taxonomy": FeatureData[Taxonomy],
-        "taxon_to_contig_map": FeatureMap[TaxonomyToContigs],
-    },
+    function=q2_annotate.tfa._estimate_tfa_table,
+    inputs=tfa_inputs,
     parameters={},
-    outputs={
-        "feature_load": FeatureTable[Frequency],
-    },
-    input_descriptions={
-        "abundance_matrix": (
-            "Contig abundances across samples, with contig IDs as feature IDs."
-        ),
-        "feature_inventory": (
-            "Counts of each functional feature on each contig, with contig "
-            "IDs as sample IDs."
-        ),
-        "taxonomy": (
-            "Taxonomic assignments indexed by the taxon IDs in "
-            "`taxon_to_contig_map`."
-        ),
-        "taxon_to_contig_map": (
-            "Mapping of taxon IDs to the contig IDs assigned to each taxon."
-        ),
-    },
+    outputs=[("feature_load", FeatureTable[TFA])],
+    input_descriptions=tfa_input_descriptions,
     parameter_descriptions={},
     output_descriptions={
         "feature_load": (
-            "Taxonomic Functional Attribution (TFA): abundance-weighted "
-            "functional feature loads per taxon, with taxon IDs as feature "
-            "IDs and functional feature IDs as sample IDs."
+            "Sparse abundance-weighted loads for taxon/function pairs "
+            "across the original samples."
         ),
     },
-    name="Estimate Taxonomic Functional Attribution (TFA).",
+    name="Estimate TFA table (internal).",
     description=(
-        "Estimate Taxonomic Functional Attribution (TFA) by multiplying each "
-        "contig's functional feature counts by its total abundance across "
-        "samples and summing the resulting loads by taxon. Only contigs shared "
-        "by both tables and mapped to a taxon with a taxonomy assignment are "
-        "included."
+        "Estimate a sparse sample-resolved table of functional loads "
+        "for each observed taxon/function pair."
     ),
     citations=[],
 )
 
+plugin.pipelines.register_function(
+    function=estimate_tfa,
+    inputs=tfa_inputs,
+    parameters={},
+    outputs=[("feature_load", FeatureTable[TFA])],
+    input_descriptions=tfa_input_descriptions,
+    parameter_descriptions={},
+    output_descriptions={
+        "feature_load": (
+            "Sparse abundance-weighted loads for taxon/function pairs "
+            "across the original samples."
+        ),
+    },
+    name="Estimate Taxonomic Functional Attribution (TFA).",
+    description=(
+        "Estimate sample-resolved functional loads for taxon/function pairs "
+        "as one sparse TFA table. Only contigs shared by both input tables "
+        "and assigned to a taxon with taxonomy are included."
+    ),
+    citations=[],
+)
 
 plugin.register_formats(EggnogHmmerIdmapFileFmt, EggnogHmmerIdmapDirectoryFmt)
 plugin.register_semantic_types(EggnogHmmerIdmap)

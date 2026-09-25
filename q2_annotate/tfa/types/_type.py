@@ -5,16 +5,10 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
+from qiime2.plugin import SemanticType
+from q2_types.feature_table import FeatureTable
 
-from .types import TFA, TFAFeatureTableDirFmt, TFAFeatureTableFormat
-from .tfa import (
-    _estimate_tfa_table,
-    estimate_tfa,
-)
-
-__all__ = [
+TFA = SemanticType(
     "TFA",
-    "TFAFeatureTableDirFmt",
-    "TFAFeatureTableFormat",
-    "estimate_tfa",
-]
+    variant_of=FeatureTable.field["content"],
+)

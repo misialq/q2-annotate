@@ -5,16 +5,7 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
+from ._type import TFA
+from ._format import TFAFeatureTableDirFmt, TFAFeatureTableFormat
 
-from .types import TFA, TFAFeatureTableDirFmt, TFAFeatureTableFormat
-from .tfa import (
-    _estimate_tfa_table,
-    estimate_tfa,
-)
-
-__all__ = [
-    "TFA",
-    "TFAFeatureTableDirFmt",
-    "TFAFeatureTableFormat",
-    "estimate_tfa",
-]
+__all__ = ["TFA", "TFAFeatureTableDirFmt", "TFAFeatureTableFormat"]

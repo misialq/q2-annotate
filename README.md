@@ -5,6 +5,23 @@
 
 QIIME 2 plugin for functional annotation and taxonomic classification of shotgun metagenomes.
 
+## Taxonomic functional attribution
+
+`estimate-tfa` returns one sparse `FeatureTable[TFA]` (Taxonomic Functional
+Attribution) artifact named `feature_load`. Its validated
+`TFAFeatureTableDirFmt` stores a BIOM v2.1 sparse matrix. Its columns retain
+the original sample IDs. Each row identifies one observed
+taxon and functional feature pair, encoded as a JSON array of two strings
+(for example, `["T1","bla_TEM"]`). The value for taxon *t*, function *f*,
+and sample *s* is the sum, over contigs assigned to *t*, of the contig's
+abundance in *s* multiplied by its count of *f*. Only pairs present in the
+feature inventory are stored as rows; zero sample values remain sparse.
+
+The sample-resolved output replaces the older `estimate-tfa` layout, which
+summed abundances across samples and used functional feature IDs as sample IDs.
+Run `estimate-tfa` again from the original inputs to obtain per-sample loads;
+the original layout cannot recover them.
+
 ## Installation
 _q2-annotate_ is available as part of the QIIME 2 moshpit distribution. For installation and usage instructions please consult the official [QIIME 2 documentation](https://docs.qiime2.org).
 
@@ -20,6 +37,7 @@ This QIIME 2 plugin contains actions used to annotate and classify (meta)genomes
 | classify-kraken2          | Classify reads/MAGs using Kraken 2.                                                    | [Kraken 2](https://ccb.jhu.edu/software/kraken2/)      |
 | construct-pangenome-index | Construct the human pangenome Bowtie 2 index.                                          | [Bowtie 2](https://bowtie-bio.sourceforge.net/bowtie2/index.shtml) |
 | estimate-bracken          | Perform read abundance re-estimation using Bracken.                                    | [Kraken 2](https://ccb.jhu.edu/software/bracken/) |
+| estimate-tfa              | Estimate sample-resolved TFA as one sparse artifact. | - |
 | extract-annotations       | Extract annotation frequencies from all annotations.                                   | - |
 | fetch-diamond-db          | Fetch the complete Diamond database necessary to run the eggnog-diamond-search action. | [EggNOG mapper](https://github.com/eggnogdb/eggnog-mapper) |
 | fetch-eggnog-db           | Fetch the databases necessary to run the eggnog-annotate action.                       | [EggNOG mapper](https://github.com/eggnogdb/eggnog-mapper) |
