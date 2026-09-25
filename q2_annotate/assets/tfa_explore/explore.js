@@ -67,7 +67,7 @@ function heatmapSpec(indices) {
     .map(index => tfa.pairs[index])
     .sort((a, b) => b.total - a.total)
     .slice(0, Number(limitSelect.value));
-  const taxaOrder = [...new Set(top.map(pair => pair.taxon))];
+  const taxaOrder = [...new Set(top.map(pair => pair.taxon_short))];
   const functionOrder = [...new Set(top.map(pair => pair.function))];
   return {
     $schema: schema,
@@ -77,10 +77,11 @@ function heatmapSpec(indices) {
     mark: {type: "rect", cursor: "pointer", stroke: "white", strokeWidth: 1},
     encoding: {
       x: {field: "function", type: "nominal", sort: functionOrder, title: "Function"},
-      y: {field: "taxon", type: "nominal", sort: taxaOrder, title: "Taxon"},
+      y: {field: "taxon_short", type: "nominal", sort: taxaOrder, title: "Taxon"},
       color: {field: "total", type: "quantitative", title: "Total load", scale: {scheme: "blues"}},
       tooltip: [
         {field: "taxon", type: "nominal", title: "Taxon"},
+        {field: "taxon_id", type: "nominal", title: "Taxon ID"},
         {field: "function", type: "nominal", title: "Function"},
         {field: "total", type: "quantitative", title: "Total load", format: ".4g"}
       ]

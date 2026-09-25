@@ -50,7 +50,7 @@ class TestTFAVisualizer(TestPluginBase):
 
     def test_sparse_payload_and_metadata_groups(self):
         metadata = qiime2.Metadata.load(self.get_data_path("sample-metadata.tsv"))
-        explore_tfa(self.temp_dir.name, self._table(), metadata)
+        explore_tfa(self.temp_dir.name, self._table(), metadata=metadata)
         output = Path(self.temp_dir.name)
         html = (output / "index.html").read_text(encoding="utf-8")
         payload = self._payload(html)
@@ -85,7 +85,7 @@ class TestTFAVisualizer(TestPluginBase):
         metadata = qiime2.Metadata.load(
             self.get_data_path("sample-metadata-partial.tsv")
         )
-        explore_tfa(self.temp_dir.name, self._table(), metadata)
+        explore_tfa(self.temp_dir.name, self._table(), metadata=metadata)
         html = (Path(self.temp_dir.name) / "index.html").read_text(encoding="utf-8")
         self.assertEqual(
             self._payload(html)["groups"]["group"],
@@ -102,3 +102,28 @@ class TestTFAVisualizer(TestPluginBase):
         self.assertIsInstance(result.visualization, qiime2.Visualization)
         without_metadata = plugin.visualizers["explore_tfa"](feature_load=artifact)
         self.assertIsInstance(without_metadata.visualization, qiime2.Visualization)
+
+    def test_taxonomy_labels_and_missing_assignments(self):
+        taxonomy = pd.read_csv(
+            self.get_data_path("taxonomy.tsv"), sep="\t", index_col=0
+        )
+        explore_tfa(self.temp_dir.name, self._table(), taxonomy=taxonomy)
+        html = (Path(self.temp_dir.name) / "index.html").read_text(encoding="utf-8")
+        pairs = self._payload(html)["pairs"]
+        self.assertEqual(pairs[0]["taxon_id"], "T1")
+        self.assertEqual(pairs[0]["taxon"], "d__Bacteria; g__Bacteroides; s__fragilis")
+        self.assertEqual(pairs[0]["taxon_short"], "s__fragilis")
+        self.assertEqual(pairs[2]["taxon"], "T2")
+        self.assertEqual(pairs[2]["taxon_short"], "T2")
+
+    def test_action_accepts_taxonomy_artifact(self):
+        table = qiime2.Artifact.import_data("FeatureTable[TFA]", self._table())
+        taxonomy = pd.read_csv(
+            self.get_data_path("taxonomy.tsv"), sep="\t", index_col=0
+        )
+        taxonomy.index.name = "Feature ID"
+        assignment = qiime2.Artifact.import_data("FeatureData[Taxonomy]", taxonomy)
+        result = plugin.visualizers["explore_tfa"](
+            feature_load=table, taxonomy=assignment
+        )
+        self.assertIsInstance(result.visualization, qiime2.Visualization)

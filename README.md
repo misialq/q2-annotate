@@ -36,7 +36,11 @@ following the `FeatureTable[Frequency]` convention used by `q2-mag
 estimate-abundance` for RPKM/TPM. Both outputs must be retained to interpret
 the table's feature IDs.
 
-`explore-tfa` opens an interactive view of a TFA artifact. Its heatmap ranks
+`explore-tfa` opens an interactive view of a TFA artifact. Pass an optional
+`FeatureData[Taxonomy]` artifact to show taxonomy assignments in the taxon
+selector and heatmap; taxon IDs are shown where an assignment is missing.
+The full lineage appears in the selector and heatmap tooltip, while the
+heatmap axis shows the terminal taxon name. Its heatmap ranks
 taxon/function links by total load; selecting a link shows its per-sample
 loads as a boxplot and a sample bar chart. Select a taxon or function alone
 to sum its matching pairs within each sample. Optional sample metadata adds
@@ -46,6 +50,9 @@ the comparison. The heatmap displays up to 100 links, and the bar chart shows
 the 100 highest-load samples; the boxplot uses all samples. The Vega plots use
 the same CDN scripts as the existing Kraken 2 visualizer, so viewing them
 requires an internet connection.
+
+A larger, reproducible synthetic dataset and a runnable command are in
+[`examples/tfa_explorer/README.md`](examples/tfa_explorer/README.md).
 
 The sample-resolved output replaces the older `estimate-tfa` layout, which
 summed abundances across samples and used functional feature IDs as sample IDs.

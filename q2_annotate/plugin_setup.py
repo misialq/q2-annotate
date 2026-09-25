@@ -1795,10 +1795,17 @@ plugin.methods.register_function(
 
 plugin.visualizers.register_function(
     function=explore_tfa,
-    inputs={"feature_load": FeatureTable[TFA]},
+    inputs={
+        "feature_load": FeatureTable[TFA],
+        "taxonomy": FeatureData[Taxonomy],
+    },
     parameters={"metadata": Metadata},
     input_descriptions={
-        "feature_load": "Sample-resolved taxon/function loads to explore."
+        "feature_load": "Sample-resolved taxon/function loads to explore.",
+        "taxonomy": (
+            "Optional taxonomy for the taxon IDs in the TFA table. "
+            "Taxa without an assignment retain their IDs."
+        ),
     },
     parameter_descriptions={
         "metadata": (

@@ -9,6 +9,7 @@
 
 import json
 import shutil
+from collections import Counter
 from importlib import resources
 from pathlib import Path
 
@@ -20,21 +21,63 @@ from qiime2 import Metadata
 from .types._format import _split_pair_id
 
 
-def _visualization_data(feature_load: biom.Table, metadata: Metadata | None) -> dict:
+def _taxon_labels(pairs: list[tuple[str, str]], taxonomy: pd.DataFrame | None):
+    ids = list(dict.fromkeys(taxon_id for taxon_id, _ in pairs))
+    if taxonomy is not None and "Taxon" not in taxonomy.columns:
+        raise ValueError("Taxonomy must contain a Taxon column.")
+
+    full = {}
+    for taxon_id in ids:
+        value = (
+            taxonomy.at[taxon_id, "Taxon"]
+            if taxonomy is not None and taxon_id in taxonomy.index
+            else None
+        )
+        full[taxon_id] = (
+            str(value).strip() if pd.notna(value) and str(value).strip() else taxon_id
+        )
+
+    duplicates = Counter(full.values())
+    full = {
+        taxon_id: f"{label} [{taxon_id}]" if duplicates[label] > 1 else label
+        for taxon_id, label in full.items()
+    }
+    short = {
+        taxon_id: label.rsplit(";", 1)[-1].strip() for taxon_id, label in full.items()
+    }
+    short_duplicates = Counter(short.values())
+    short = {
+        taxon_id: f"{label} [{taxon_id}]" if short_duplicates[label] > 1 else label
+        for taxon_id, label in short.items()
+    }
+    return full, short
+
+
+def _visualization_data(
+    feature_load: biom.Table,
+    metadata: Metadata | None,
+    taxonomy: pd.DataFrame | None = None,
+) -> dict:
     sample_ids = list(feature_load.ids(axis="sample"))
     matrix = feature_load.matrix_data.tocsr()
+    decoded_pairs = [
+        _split_pair_id(observation_id)
+        for observation_id in feature_load.ids(axis="observation")
+    ]
+    full_taxa, short_taxa = _taxon_labels(decoded_pairs, taxonomy)
     pairs = []
     loads = []
 
-    for row, observation_id in enumerate(feature_load.ids(axis="observation")):
-        taxon_id, function_id = _split_pair_id(observation_id)
+    for row, (taxon_id, function_id) in enumerate(decoded_pairs):
         start, end = matrix.indptr[row], matrix.indptr[row + 1]
         values = matrix.data[start:end]
         if not np.all(np.isfinite(values)) or np.any(values < 0):
             raise ValueError("TFA loads must be finite and nonnegative.")
         pairs.append(
             {
-                "taxon": taxon_id,
+                "taxon": full_taxa[taxon_id],
+                "taxon_short": short_taxa[taxon_id],
+                "taxon_id": taxon_id,
                 "function": function_id,
                 "total": float(values.sum()),
             }
@@ -59,14 +102,17 @@ def _visualization_data(feature_load: biom.Table, metadata: Metadata | None) -> 
 
 
 def explore_tfa(
-    output_dir: str, feature_load: biom.Table, metadata: Metadata | None = None
+    output_dir: str,
+    feature_load: biom.Table,
+    taxonomy: pd.DataFrame = None,
+    metadata: Metadata | None = None,
 ) -> None:
-    """Write an interactive TFA explorer with optional sample groups."""
+    """Write an interactive TFA explorer with optional taxonomy and groups."""
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
     assets = resources.files("q2_annotate") / "assets" / "tfa_explore"
     payload = json.dumps(
-        _visualization_data(feature_load, metadata),
+        _visualization_data(feature_load, metadata, taxonomy),
         ensure_ascii=False,
         allow_nan=False,
         separators=(",", ":"),
