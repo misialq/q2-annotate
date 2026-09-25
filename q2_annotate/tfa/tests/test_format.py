@@ -7,7 +7,6 @@
 # ----------------------------------------------------------------------------
 import csv
 import json
-import tempfile
 from pathlib import Path
 
 import biom
@@ -56,9 +55,8 @@ class TestTFAFormat(TestPluginBase):
         return TFAFeatureTableFormat(str(path), mode="r")
 
     def test_valid(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            path = Path(temp_dir) / "tfa-table.biom"
-            self._write(path, self._table_from_tsv()).validate()
+        path = Path(self.temp_dir.name) / "tfa-table.biom"
+        self._write(path, self._table_from_tsv()).validate()
 
     def test_rejects_unpaired_id(self):
         table = self._table_from_tsv()
@@ -69,10 +67,9 @@ class TestTFAFormat(TestPluginBase):
             observation_ids=observation_ids,
             sample_ids=table.ids(axis="sample"),
         )
-        with tempfile.TemporaryDirectory() as temp_dir:
-            path = Path(temp_dir) / "tfa-table.biom"
-            with self.assertRaisesRegex(ValidationError, "pair ID"):
-                self._write(path, invalid).validate()
+        path = Path(self.temp_dir.name) / "tfa-table.biom"
+        with self.assertRaisesRegex(ValidationError, "pair ID"):
+            self._write(path, invalid).validate()
 
     def test_rejects_negative_load(self):
         table = self._table_from_tsv()
@@ -83,10 +80,9 @@ class TestTFAFormat(TestPluginBase):
             observation_ids=table.ids(axis="observation"),
             sample_ids=table.ids(axis="sample"),
         )
-        with tempfile.TemporaryDirectory() as temp_dir:
-            path = Path(temp_dir) / "tfa-table.biom"
-            with self.assertRaisesRegex(ValidationError, "nonnegative"):
-                self._write(path, invalid).validate()
+        path = Path(self.temp_dir.name) / "tfa-table.biom"
+        with self.assertRaisesRegex(ValidationError, "nonnegative"):
+            self._write(path, invalid).validate()
 
     def test_sparse_transformer_round_trip(self):
         expected = self._table_from_tsv()

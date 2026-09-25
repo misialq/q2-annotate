@@ -6,18 +6,20 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 import json
-import unittest
-
 import biom
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
+from qiime2.plugin.testing import TestPluginBase
 
 from q2_annotate.tfa import estimate_tfa
 
 
-class TestTFA(unittest.TestCase):
+class TestTFA(TestPluginBase):
+    package = "q2_annotate.tfa.tests"
+
     def setUp(self):
+        super().setUp()
         self.abundance = pd.DataFrame(
             {
                 "C1": [100, 0, 0],

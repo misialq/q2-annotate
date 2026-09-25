@@ -5,17 +5,18 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
-import unittest
-
 import biom
 import numpy as np
 import pandas as pd
 import qiime2
+from qiime2.plugin.testing import TestPluginBase
 
 from q2_annotate.plugin_setup import plugin
 
 
-class TestTFAAction(unittest.TestCase):
+class TestTFAAction(TestPluginBase):
+    package = "q2_annotate.tfa.tests"
+
     def test_action_registration(self):
         self.assertIn("estimate_tfa", plugin.methods)
         self.assertNotIn("_estimate_tfa_table", plugin.methods)
