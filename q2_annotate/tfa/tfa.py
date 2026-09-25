@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 
-from .types._format import _pair_id, _split_pair_id
+from .types._format import _pair_id
 
 
 def estimate_tfa(
@@ -66,8 +66,6 @@ def estimate_tfa(
     abundance_matrix_sparse = abundance_matrix.matrix_data.tocsr()
 
     A = abundance_matrix_sparse[abund_indices, :]
-    if not np.all(np.isfinite(A.data)) or np.any(A.data < 0):
-        raise ValueError("Contig abundances must be finite and nonnegative.")
 
     # Slice and align the feature inventory matrix. Its observations are
     # functions and its samples are contigs.
@@ -78,8 +76,6 @@ def estimate_tfa(
     feature_inventory_sparse = feature_inventory.matrix_data.tocsc()
 
     inventory = feature_inventory_sparse[:, feat_indices].T.tocsr()
-    if not np.all(np.isfinite(inventory.data)) or np.any(inventory.data < 0):
-        raise ValueError("Functional feature counts must be finite and nonnegative.")
     inventory.eliminate_zeros()
 
     # For each taxon, multiply its sparse function-by-contig inventory by

@@ -142,9 +142,3 @@ class TestTFA(unittest.TestCase):
         mapping = {**self.mapping, "T2": ["C1", "C2", "C4", "C6"]}
         with self.assertRaisesRegex(ValueError, "multiple taxa"):
             self.estimate(mapping=mapping)
-
-    def test_negative_abundance_rejected(self):
-        abundance = self.abundance.copy()
-        abundance.loc["S1", "C1"] = -1
-        with self.assertRaisesRegex(ValueError, "nonnegative"):
-            self.estimate(abundance=abundance)
