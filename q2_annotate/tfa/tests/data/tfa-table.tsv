@@ -1,0 +1,4 @@
+taxon_id	function_id	S1	S2	S3
+T1	geneA	5	3	0
+T1	gene B	1.25	3	0
+T2	gene B	0	12	4
