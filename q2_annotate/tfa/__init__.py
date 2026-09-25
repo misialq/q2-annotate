@@ -7,10 +7,7 @@
 # ----------------------------------------------------------------------------
 
 from .types import TFA, TFAFeatureTableDirFmt, TFAFeatureTableFormat
-from .tfa import (
-    _estimate_tfa_table,
-    estimate_tfa,
-)
+from .tfa import estimate_tfa
 
 __all__ = [
     "TFA",

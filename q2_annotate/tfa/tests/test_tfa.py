@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 
-from q2_annotate.tfa import _estimate_tfa_table
+from q2_annotate.tfa import estimate_tfa
 
 
 class TestTFA(unittest.TestCase):
@@ -49,7 +49,7 @@ class TestTFA(unittest.TestCase):
         taxonomy = self.taxonomy if taxonomy is None else taxonomy
         mapping = self.mapping if mapping is None else mapping
         abundance, inventory = abundance.T, inventory.T
-        return _estimate_tfa_table(
+        return estimate_tfa(
             biom.Table(
                 abundance.values,
                 observation_ids=abundance.index,

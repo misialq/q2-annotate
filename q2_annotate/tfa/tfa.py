@@ -15,12 +15,13 @@ import scipy.sparse as sp
 from .types._format import _pair_id, _split_pair_id
 
 
-def _estimate_tfa_table(
+def estimate_tfa(
     abundance_matrix: biom.Table,
     feature_inventory: biom.Table,
     taxonomy: pd.DataFrame,
     taxon_to_contig_map: dict,
 ) -> biom.Table:
+    """Estimate sparse, sample-resolved taxon/function loads."""
     # Build a mapping from contig_id to taxon_id using taxon_to_contig_map and taxonomy
     contig_to_taxon_id = {}
     for taxon_id, contigs in taxon_to_contig_map.items():
@@ -111,23 +112,3 @@ def _estimate_tfa_table(
         observation_ids=pair_ids,
         sample_ids=sample_ids,
     )
-
-
-def estimate_tfa(
-    ctx,
-    abundance_matrix,
-    feature_inventory,
-    taxonomy,
-    taxon_to_contig_map,
-):
-    """Estimate a sparse, sample-resolved TFA table."""
-    estimate_table = ctx.get_action("annotate", "_estimate_tfa_table")
-
-    (feature_load,) = estimate_table(
-        abundance_matrix=abundance_matrix,
-        feature_inventory=feature_inventory,
-        taxonomy=taxonomy,
-        taxon_to_contig_map=taxon_to_contig_map,
-    )
-
-    return feature_load

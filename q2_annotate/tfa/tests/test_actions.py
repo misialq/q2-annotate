@@ -15,13 +15,13 @@ import qiime2
 from q2_annotate.plugin_setup import plugin
 
 
-class TestTFAPipeline(unittest.TestCase):
+class TestTFAAction(unittest.TestCase):
     def test_action_registration(self):
-        self.assertIn("_estimate_tfa_table", plugin.methods)
-        self.assertNotIn("estimate_tfa_table", plugin.methods)
+        self.assertIn("estimate_tfa", plugin.methods)
+        self.assertNotIn("_estimate_tfa_table", plugin.methods)
         self.assertNotIn("tfa_by_taxon", plugin.methods)
         self.assertNotIn("tfa_by_function", plugin.methods)
-        self.assertIn("estimate_tfa", plugin.pipelines)
+        self.assertNotIn("estimate_tfa", plugin.pipelines)
 
     def _inputs(self, inventory_contigs=("C1", "C2", "C3")):
         abundance = qiime2.Artifact.import_data(
@@ -58,8 +58,8 @@ class TestTFAPipeline(unittest.TestCase):
             taxon_to_contig_map=mapping,
         )
 
-    def test_pipeline_returns_only_tfa_artifact(self):
-        result = plugin.pipelines["estimate_tfa"](**self._inputs())
+    def test_estimate_returns_tfa_artifact(self):
+        result = plugin.methods["estimate_tfa"](**self._inputs())
         self.assertEqual(len(result), 1)
         self.assertEqual(str(result.feature_load.type), "FeatureTable[TFA]")
         self.assertEqual(
@@ -68,5 +68,5 @@ class TestTFAPipeline(unittest.TestCase):
         )
 
     def test_empty_table_when_no_contigs_overlap(self):
-        result = plugin.pipelines["estimate_tfa"](**self._inputs(("C4",)))
+        result = plugin.methods["estimate_tfa"](**self._inputs(("C4",)))
         self.assertEqual(result.feature_load.view(biom.Table).shape, (0, 2))

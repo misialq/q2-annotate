@@ -1786,27 +1786,6 @@ tfa_input_descriptions = {
 }
 
 plugin.methods.register_function(
-    function=q2_annotate.tfa._estimate_tfa_table,
-    inputs=tfa_inputs,
-    parameters={},
-    outputs=[("feature_load", FeatureTable[TFA])],
-    input_descriptions=tfa_input_descriptions,
-    parameter_descriptions={},
-    output_descriptions={
-        "feature_load": (
-            "Sparse abundance-weighted loads for taxon/function pairs "
-            "across the original samples."
-        ),
-    },
-    name="Estimate TFA table (internal).",
-    description=(
-        "Estimate a sparse sample-resolved table of functional loads "
-        "for each observed taxon/function pair."
-    ),
-    citations=[],
-)
-
-plugin.pipelines.register_function(
     function=estimate_tfa,
     inputs=tfa_inputs,
     parameters={},
