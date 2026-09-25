@@ -5,13 +5,13 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
-import csv
 import json
 from pathlib import Path
 
 import biom
 import h5py
 import numpy as np
+import pandas as pd
 import scipy.sparse as sp
 from qiime2.plugin import ValidationError
 from qiime2.plugin.testing import TestPluginBase
@@ -27,24 +27,24 @@ class TestTFAFormat(TestPluginBase):
     package = "q2_annotate.tfa.tests"
 
     def _table_from_tsv(self):
-        with open(
-            self.get_data_path("tfa-table.tsv"), newline="", encoding="utf-8"
-        ) as file:
-            reader = csv.DictReader(file, delimiter="\t")
-            sample_ids = reader.fieldnames[2:]
-            rows = list(reader)
+        data = pd.read_csv(
+            self.get_data_path("tfa-table.tsv"),
+            sep="\t",
+            dtype={"taxon_id": str, "function_id": str},
+        )
+        sample_ids = list(data.columns[2:])
 
         return biom.Table(
-            sp.csr_matrix(
-                [[float(row[sample_id]) for sample_id in sample_ids] for row in rows]
-            ),
+            sp.csr_matrix(data[sample_ids].to_numpy(dtype=float)),
             observation_ids=[
                 json.dumps(
-                    [row["taxon_id"], row["function_id"]],
+                    [taxon_id, function_id],
                     ensure_ascii=False,
                     separators=(",", ":"),
                 )
-                for row in rows
+                for taxon_id, function_id in zip(
+                    data["taxon_id"], data["function_id"]
+                )
             ],
             sample_ids=sample_ids,
         )
