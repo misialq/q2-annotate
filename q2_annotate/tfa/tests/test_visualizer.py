@@ -56,6 +56,10 @@ class TestTFAVisualizer(TestPluginBase):
         payload = self._payload(html)
         self.assertEqual(payload["samples"], ["S1", "S2", "S3"])
         self.assertEqual([pair["total"] for pair in payload["pairs"]], [8, 4.25, 16])
+        self.assertEqual(
+            [pair["mean"] for pair in payload["pairs"]], [8 / 3, 4.25 / 3, 16 / 3]
+        )
+        self.assertEqual([pair["median"] for pair in payload["pairs"]], [3, 1.25, 4])
         self.assertEqual(len(payload["loads"]), 6)
         self.assertEqual(payload["loads"][0], [0, 0, 5.0])
         self.assertEqual(
@@ -80,6 +84,27 @@ class TestTFAVisualizer(TestPluginBase):
         self.assertNotIn("T<script>", html)
         self.assertEqual(self._payload(html)["pairs"][0]["taxon"], "T<script>")
         self.assertEqual(self._payload(html)["groups"], {})
+
+    def test_even_sample_medians_include_sparse_zeros(self):
+        table = self._table().filter(["S1", "S2"], axis="sample", inplace=False)
+        explore_tfa(self.temp_dir.name, table)
+        html = (Path(self.temp_dir.name) / "index.html").read_text(encoding="utf-8")
+        self.assertEqual(
+            [pair["median"] for pair in self._payload(html)["pairs"]], [4, 2.125, 6]
+        )
+
+    def test_mostly_absent_pairs_have_zero_median(self):
+        original = self._table()
+        table = biom.Table(
+            sp.hstack([original.matrix_data, sp.csr_matrix((3, 3))]),
+            observation_ids=original.ids(axis="observation"),
+            sample_ids=["S1", "S2", "S3", "S4", "S5", "S6"],
+        )
+        explore_tfa(self.temp_dir.name, table)
+        html = (Path(self.temp_dir.name) / "index.html").read_text(encoding="utf-8")
+        pairs = self._payload(html)["pairs"]
+        self.assertEqual([pair["median"] for pair in pairs], [0, 0, 0])
+        self.assertEqual([pair["mean"] for pair in pairs], [8 / 6, 4.25 / 6, 16 / 6])
 
     def test_samples_missing_from_metadata_remain_grouped(self):
         metadata = qiime2.Metadata.load(

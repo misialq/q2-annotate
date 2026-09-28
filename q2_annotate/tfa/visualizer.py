@@ -53,6 +53,25 @@ def _taxon_labels(pairs: list[tuple[str, str]], taxonomy: pd.DataFrame | None):
     return full, short
 
 
+def _sample_summaries(values: np.ndarray, sample_count: int) -> dict:
+    total = float(values.sum())
+    if not sample_count:
+        return {"total": total, "mean": 0.0, "median": 0.0}
+
+    # Nonnegative loads place implicit sparse zeros before stored values.
+    ordered = np.sort(values)
+    zero_count = sample_count - len(ordered)
+    middle = (sample_count - 1) // 2, sample_count // 2
+    median = (
+        sum(
+            0.0 if index < zero_count else float(ordered[index - zero_count])
+            for index in middle
+        )
+        / 2
+    )
+    return {"total": total, "mean": total / sample_count, "median": median}
+
+
 def _visualization_data(
     feature_load: biom.Table,
     metadata: Metadata | None,
@@ -79,7 +98,7 @@ def _visualization_data(
                 "taxon_short": short_taxa[taxon_id],
                 "taxon_id": taxon_id,
                 "function": function_id,
-                "total": float(values.sum()),
+                **_sample_summaries(values, len(sample_ids)),
             }
         )
         loads.extend(

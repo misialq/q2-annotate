@@ -13,6 +13,10 @@ be interpreted as biological findings.
 artifacts and metadata below. Open it with `qiime tools view` or upload it to
 QIIME 2 View.
 
+For comparison, `tfa-explorer-demo-heatmap-metric.qzv` is a separately named
+copy of the current visualization, and `tfa-explorer-demo-c47115a.qzv` was
+generated with the same inputs from the earlier sum-only version.
+
 The source files are readable TSVs:
 
 - `tfa-table.tsv`: one row per taxon–function pair, one column per sample;
@@ -37,8 +41,9 @@ qiime annotate explore-tfa \
 ```
 
 Open `tfa-explorer-demo.qzv` with `qiime tools view`. Select
-`treatment_visit` to compare the four groups, then switch the group summary
-between sum, mean, and median. Try `blaCTX-M` and
+`treatment_visit` to compare the four groups in the boxplots. Switch the
+heatmap metric between sum, mean, and median to change its colors and link
+ranking across all samples. Try `blaCTX-M` and
 `butyryl_CoA_transferase` in the function selector, then select individual
 taxa or click heatmap cells. Omit `--i-taxonomy` to see taxon IDs.
 

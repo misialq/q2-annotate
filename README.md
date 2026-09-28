@@ -40,13 +40,13 @@ the table's feature IDs.
 `FeatureData[Taxonomy]` artifact to show taxonomy assignments in the taxon
 selector and heatmap; taxon IDs are shown where an assignment is missing.
 The full lineage appears in the selector and heatmap tooltip, while the
-heatmap axis shows the terminal taxon name. Its heatmap ranks
-taxon/function links by total load; selecting a link shows its per-sample
+heatmap axis shows the terminal taxon name. Its heatmap ranks and colors
+taxon/function links by the selected sum, mean, or median load across all
+samples, including zero loads; selecting a link shows its per-sample
 loads as a boxplot and a sample bar chart. Select a taxon or function alone
 to sum its matching pairs within each sample. Optional sample metadata adds
 categorical columns to the grouping control, so the boxplot can compare
-sample groups. A group summary chart can show the sum, mean, or median of
-per-sample loads in each group. Samples with zero load and samples missing
+sample groups. Samples with zero load and samples missing
 metadata remain in the comparison. The heatmap displays up to 100 links, and
 the bar chart shows the 100 highest-load samples; the boxplot uses all samples.
 The Vega plots use
