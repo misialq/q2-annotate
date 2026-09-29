@@ -5,29 +5,26 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
-import biom
-import qiime2
+import pandas as pd
 
 from q2_annotate.plugin_setup import plugin
 
-from ._format import TFAFeatureTableFormat
+from ._format import GeneTaxonomyFormat
+from ._utils import _validate_gene_taxonomy
 
 
 @plugin.register_transformer
-def _biom_to_tfa_format(table: biom.Table) -> TFAFeatureTableFormat:
-    result = TFAFeatureTableFormat()
+def _gene_taxonomy_to_format(frame: pd.DataFrame) -> GeneTaxonomyFormat:
+    _validate_gene_taxonomy(frame)
+    result = GeneTaxonomyFormat()
     with result.open() as handle:
-        table.to_hdf5(handle, generated_by=f"qiime2 {qiime2.__version__}")
+        frame.to_csv(handle, sep="\t", index=True, index_label="Feature ID")
     return result
 
 
 @plugin.register_transformer
-def _tfa_format_to_biom(source: TFAFeatureTableFormat) -> biom.Table:
+def _gene_taxonomy_to_dataframe(source: GeneTaxonomyFormat) -> pd.DataFrame:
     with source.open() as handle:
-        table = biom.Table.from_hdf5(handle)
-    # BIOM axis metadata is not part of this semantic type.
-    return biom.Table(
-        table.matrix_data,
-        observation_ids=table.ids(axis="observation"),
-        sample_ids=table.ids(axis="sample"),
-    )
+        return pd.read_csv(
+            handle, sep="\t", index_col=0, dtype=str, keep_default_na=False
+        )

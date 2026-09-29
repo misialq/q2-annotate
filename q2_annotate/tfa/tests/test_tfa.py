@@ -5,7 +5,6 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
-import json
 import biom
 import numpy as np
 import pandas as pd
@@ -20,30 +19,17 @@ class TestTFA(TestPluginBase):
 
     def setUp(self):
         super().setUp()
-        self.abundance = pd.DataFrame(
-            {
-                "C1": [100, 0, 0],
-                "C2": [50, 0, 0],
-                "C3": [0, 120, 0],
-                "C4": [0, 40, 0],
-                "C5": [0, 0, 90],
-                "C6": [0, 0, 60],
-            },
-            index=["S1", "S2", "S3"],
+        self.abundance = pd.read_csv(
+            self.get_data_path("contig-abundance.tsv"), sep="\t", index_col=0
+        ).T
+        self.inventory = pd.read_csv(
+            self.get_data_path("gene-inventory.tsv"), sep="\t", index_col=0
+        ).T
+        self.taxonomy = pd.read_csv(
+            self.get_data_path("estimate-taxonomy.tsv"), sep="\t", index_col=0
         )
-        self.inventory = pd.DataFrame(
-            {
-                "bla_TEM": [2, 1, 2, 1, 2, 1],
-                "vanA": [1, 0, 1, 0, 1, 0],
-                "mecA": [0, 3, 0, 3, 0, 3],
-            },
-            index=["C1", "C2", "C3", "C4", "C5", "C6"],
-        )
-        self.taxonomy = pd.DataFrame(
-            {"Taxon": ["Escherichia coli", "Klebsiella pneumoniae"]},
-            index=["T1", "T2"],
-        )
-        self.mapping = {"T1": ["C1", "C3", "C5"], "T2": ["C2", "C4", "C6"]}
+        mapping = pd.read_csv(self.get_data_path("taxon-to-contigs.tsv"), sep="\t")
+        self.mapping = mapping.groupby("Taxon ID")["Contig ID"].apply(list).to_dict()
 
     def estimate(self, abundance=None, inventory=None, taxonomy=None, mapping=None):
         abundance = self.abundance if abundance is None else abundance
@@ -67,7 +53,7 @@ class TestTFA(TestPluginBase):
         )
 
     def test_sample_resolved_values_and_sparse_pairs(self):
-        observed = self.estimate()
+        observed, gene_taxonomy = self.estimate()
         self.assertEqual(list(observed.ids(axis="sample")), ["S1", "S2", "S3"])
         self.assertEqual(observed.shape, (4, 3))
         self.assertTrue(sp.issparse(observed.matrix_data))
@@ -81,10 +67,13 @@ class TestTFA(TestPluginBase):
         for pair_id, values in zip(
             observed.ids(axis="observation"), observed.matrix_data.toarray()
         ):
-            np.testing.assert_array_equal(values, expected[tuple(json.loads(pair_id))])
+            np.testing.assert_array_equal(
+                values,
+                expected[tuple(gene_taxonomy.loc[pair_id, ["Taxon ID", "Gene ID"]])],
+            )
 
     def test_no_common_contigs_retains_samples(self):
-        observed = self.estimate(mapping={"T1": ["not-a-contig"]})
+        observed, gene_taxonomy = self.estimate(mapping={"T1": ["not-a-contig"]})
         self.assertEqual(observed.shape, (0, 3))
         self.assertEqual(list(observed.ids(axis="sample")), ["S1", "S2", "S3"])
 
@@ -95,14 +84,14 @@ class TestTFA(TestPluginBase):
             index=["T1", "T2", "T3"],
         )
         mapping = {**self.mapping, "T3": ["C7", "C8"]}
-        observed = self.estimate(
+        observed, gene_taxonomy = self.estimate(
             abundance=abundance, taxonomy=taxonomy, mapping=mapping
         )
         self.assertEqual(observed.shape, (4, 3))
         self.assertEqual(observed.matrix_data.nnz, 12)
 
     def test_zero_abundance_keeps_observed_pairs(self):
-        observed = self.estimate(abundance=self.abundance * 0)
+        observed, gene_taxonomy = self.estimate(abundance=self.abundance * 0)
         self.assertEqual(observed.shape, (4, 3))
         self.assertEqual(observed.matrix_data.nnz, 0)
 
@@ -110,9 +99,9 @@ class TestTFA(TestPluginBase):
         abundance = self.abundance * 0.0
         abundance.loc["S1", "C1"] = 1e-9
         abundance.loc["S1", "C2"] = 1e12
-        observed = self.estimate(abundance=abundance)
+        observed, gene_taxonomy = self.estimate(abundance=abundance)
         loads = {
-            tuple(json.loads(pair_id)): values
+            tuple(gene_taxonomy.loc[pair_id, ["Taxon ID", "Gene ID"]]): values
             for pair_id, values in zip(
                 observed.ids(axis="observation"), observed.matrix_data.toarray()
             )
@@ -130,17 +119,86 @@ class TestTFA(TestPluginBase):
             atol=0,
         )
 
-    def test_pair_ids_round_trip_ambiguous_characters(self):
+    def test_mapping_preserves_ambiguous_characters(self):
         inventory = self.inventory.rename(columns={"bla_TEM": 'a,"b'})
         taxonomy = self.taxonomy.rename(index={"T1": 't,"1'})
         mapping = {'t,"1': self.mapping["T1"], "T2": self.mapping["T2"]}
-        observed = self.estimate(
+        observed, gene_taxonomy = self.estimate(
             inventory=inventory, taxonomy=taxonomy, mapping=mapping
         )
-        pairs = {tuple(json.loads(row)) for row in observed.ids(axis="observation")}
+        pairs = set(
+            gene_taxonomy[["Taxon ID", "Gene ID"]].itertuples(index=False, name=None)
+        )
         self.assertIn(('t,"1', 'a,"b'), pairs)
 
     def test_ambiguous_taxon_assignment_rejected(self):
         mapping = {**self.mapping, "T2": ["C1", "C2", "C4", "C6"]}
         with self.assertRaisesRegex(ValueError, "multiple taxa"):
             self.estimate(mapping=mapping)
+
+    def test_stable_feature_ids_and_mapping(self):
+        table, mapping = self.estimate()
+        reordered, reordered_mapping = self.estimate(
+            inventory=self.inventory[self.inventory.columns[::-1]],
+            abundance=self.abundance[self.abundance.columns[::-1]],
+        )
+        pd.testing.assert_frame_equal(
+            mapping.sort_index(), reordered_mapping.sort_index()
+        )
+        self.assertEqual(list(table.ids(axis="observation")), list(mapping.index))
+        self.assertTrue(
+            all(
+                identifier.startswith("gt_") and len(identifier) == 67
+                for identifier in mapping.index
+            )
+        )
+        pd.testing.assert_frame_equal(
+            table.to_dataframe(dense=True).sort_index(),
+            reordered.to_dataframe(dense=True).sort_index(),
+        )
+
+    def test_registered_estimate_outputs_and_fractional_values(self):
+        import qiime2
+        import biom
+
+        abundance = self.abundance.T * 0.01
+        inventory = self.inventory.T
+        result = self.plugin.methods["estimate_tfa"](
+            abundance_matrix=qiime2.Artifact.import_data(
+                "FeatureTable[Frequency]",
+                biom.Table(
+                    abundance.values,
+                    observation_ids=abundance.index,
+                    sample_ids=abundance.columns,
+                ),
+            ),
+            feature_inventory=qiime2.Artifact.import_data(
+                "FeatureTable[Frequency]",
+                biom.Table(
+                    inventory.values,
+                    observation_ids=inventory.index,
+                    sample_ids=inventory.columns,
+                ),
+            ),
+            taxonomy=qiime2.Artifact.import_data(
+                "FeatureData[Taxonomy]", self.taxonomy
+            ),
+            taxon_to_contig_map=qiime2.Artifact.import_data(
+                "FeatureMap[TaxonomyToContigs]", self.mapping
+            ),
+        )
+        self.assertEqual(str(result.feature_load.type), "FeatureTable[Frequency]")
+        self.assertEqual(str(result.gene_taxonomy.type), "FeatureData[GeneTaxonomy]")
+        table, mapping = self.estimate(abundance=self.abundance * 0.01)
+        np.testing.assert_array_equal(
+            result.feature_load.view(biom.Table).matrix_data.toarray(),
+            table.matrix_data.toarray(),
+        )
+        pd.testing.assert_frame_equal(result.gene_taxonomy.view(pd.DataFrame), mapping)
+
+    def test_invalid_abundances_rejected(self):
+        for invalid in (-1, float("nan"), float("inf")):
+            abundance = self.abundance.astype(float)
+            abundance.loc["S1", "C1"] = invalid
+            with self.assertRaisesRegex(ValueError, "finite and nonnegative"):
+                self.estimate(abundance=abundance)

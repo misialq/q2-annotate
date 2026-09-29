@@ -5,81 +5,45 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
-import json
+import csv
 
-import h5py
-import numpy as np
-from qiime2.core.exceptions import ValidationError
-from qiime2.plugin import model
-from q2_types.feature_table import BIOMV210Format
+from qiime2.plugin import ValidationError, model
+
+from ._utils import GENE_TAXONOMY_COLUMNS
 
 
-def _pair_id(taxon_id: str, feature_id: str) -> str:
-    """Encode both feature dimensions without assuming anything about IDs."""
-    return json.dumps(
-        [str(taxon_id), str(feature_id)], ensure_ascii=False, separators=(",", ":")
-    )
-
-
-def _split_pair_id(observation_id: str) -> tuple[str, str]:
-    try:
-        pair = json.loads(observation_id)
-    except (TypeError, ValueError) as error:
-        raise ValueError(f"Invalid TFA feature ID: {observation_id!r}") from error
-    if (
-        not isinstance(pair, list)
-        or len(pair) != 2
-        or not all(isinstance(value, str) for value in pair)
-    ):
-        raise ValueError(f"Invalid TFA feature ID: {observation_id!r}")
-    return pair[0], pair[1]
-
-
-class TFAFeatureTableFormat(model.BinaryFileFormat):
-    """BIOM v2.1 with encoded taxon/function feature IDs."""
-
-    def open(self):
-        return h5py.File(str(self), mode=self._mode)
+class GeneTaxonomyFormat(model.TextFileFormat):
+    """TSV mapping ordinary feature IDs to taxon IDs, gene IDs, and labels."""
 
     def _validate_(self, level):
+        seen_ids, seen_pairs = set(), set()
         try:
-            with h5py.File(str(self), mode="r") as handle:
-                # Check the BIOM structure before reading TFA-specific datasets.
-                for group in BIOMV210Format.groups:
-                    if group not in handle:
-                        raise ValidationError(f"Missing BIOM group: {group}")
-                for dataset in BIOMV210Format.datasets:
-                    if dataset not in handle:
-                        raise ValidationError(f"Missing BIOM dataset: {dataset}")
-                for attribute in BIOMV210Format.attrs:
-                    if attribute not in handle.attrs:
-                        raise ValidationError(f"Missing BIOM attribute: {attribute}")
-                ids = handle["observation/ids"]
-                values = handle["observation/matrix/data"]
-                # Minimal validation samples the first 100 IDs and stored values.
-                id_count = min(len(ids), 100) if level == "min" else len(ids)
-                value_count = min(len(values), 100) if level == "min" else len(values)
-                # Read in chunks so full validation does not load the table at once.
-                for start in range(0, id_count, 8192):
-                    for raw_id in ids[start : min(start + 8192, id_count)]:
-                        try:
-                            _split_pair_id(raw_id.decode("utf-8"))
-                        except (UnicodeDecodeError, ValueError) as error:
-                            raise ValidationError(
-                                f"Invalid taxon/function pair ID: {raw_id!r}"
-                            ) from error
-                for start in range(0, value_count, 8192):
-                    data = values[start : min(start + 8192, value_count)]
-                    if not np.all(np.isfinite(data)) or np.any(data < 0):
+            with self.open() as handle:
+                reader = csv.reader(handle, delimiter="\t", strict=True)
+                if next(reader, None) != ["Feature ID", *GENE_TAXONOMY_COLUMNS]:
+                    raise ValidationError(
+                        "Expected Feature ID, Taxon ID, Gene ID, Taxon header."
+                    )
+                # Minimal validation checks the first 100 records; full validation streams all.
+                for index, row in enumerate(reader):
+                    if level == "min" and index >= 100:
+                        break
+                    if len(row) != 4 or any(not value.strip() for value in row[:3]):
                         raise ValidationError(
-                            "TFA loads must be finite and nonnegative."
+                            "Each gene taxonomy row requires four fields and nonempty IDs."
                         )
-        except OSError as error:
-            raise ValidationError("Expected a BIOM v2.1 TFA feature table.") from error
+                    pair = tuple(row[1:3])
+                    # Both the feature ID and taxon/gene pair must identify one row.
+                    if row[0] in seen_ids or pair in seen_pairs:
+                        raise ValidationError(
+                            "Gene taxonomy feature IDs and taxon/gene pairs must be unique."
+                        )
+                    seen_ids.add(row[0])
+                    seen_pairs.add(pair)
+        except (UnicodeDecodeError, csv.Error) as error:
+            raise ValidationError("Expected a UTF-8 gene taxonomy TSV file.") from error
 
 
-TFAFeatureTableDirFmt = model.SingleFileDirectoryFormat(
-    "TFAFeatureTableDirFmt",
-    "tfa-table.biom",
-    TFAFeatureTableFormat,
+GeneTaxonomyDirFmt = model.SingleFileDirectoryFormat(
+    "GeneTaxonomyDirFmt", "gene-taxonomy.tsv", GeneTaxonomyFormat
 )

@@ -29,9 +29,9 @@ from q2_types.feature_table import (
     Unconstrained,
 )
 from q2_annotate.tfa import (
-    TFAFeatureTableDirFmt,
-    TFAFeatureTableFormat,
-    TFA,
+    GeneTaxonomyDirFmt,
+    GeneTaxonomyFormat,
+    GeneTaxonomy,
 )
 from q2_annotate.tfa.tfa import estimate_tfa
 from q2_types.per_sample_sequences import (
@@ -1746,16 +1746,14 @@ plugin.pipelines.register_function(
     ),
 )
 
-plugin.register_formats(TFAFeatureTableFormat, TFAFeatureTableDirFmt)
-plugin.register_semantic_types(TFA)
+plugin.register_formats(GeneTaxonomyFormat, GeneTaxonomyDirFmt)
+plugin.register_semantic_types(GeneTaxonomy)
 plugin.register_artifact_class(
-    FeatureTable[TFA],
-    directory_format=TFAFeatureTableDirFmt,
+    FeatureData[GeneTaxonomy],
+    directory_format=GeneTaxonomyDirFmt,
     description=(
-        "Taxonomic Functional Attribution (TFA): a sparse table of "
-        "abundance-weighted functional loads, with original sample IDs as "
-        "columns and JSON-encoded [taxon ID, function ID] pairs as feature "
-        "IDs. Values are nonnegative real numbers."
+        "Mapping from feature IDs to taxon IDs, gene IDs, and taxonomy labels "
+        "for taxonomic functional attribution."
     ),
 )
 
@@ -1789,7 +1787,10 @@ plugin.methods.register_function(
     function=estimate_tfa,
     inputs=tfa_inputs,
     parameters={},
-    outputs=[("feature_load", FeatureTable[TFA])],
+    outputs=[
+        ("feature_load", FeatureTable[Frequency]),
+        ("gene_taxonomy", FeatureData[GeneTaxonomy]),
+    ],
     input_descriptions=tfa_input_descriptions,
     parameter_descriptions={},
     output_descriptions={
@@ -1797,11 +1798,15 @@ plugin.methods.register_function(
             "Sparse abundance-weighted loads for taxon/function pairs "
             "across the original samples."
         ),
+        "gene_taxonomy": (
+            "Map feature IDs to their taxon IDs, gene IDs, and taxonomy labels."
+        ),
     },
     name="Estimate Taxonomic Functional Attribution (TFA).",
     description=(
         "Estimate sample-resolved functional loads for taxon/function pairs "
-        "as one sparse TFA table. Only contigs shared by both input tables "
+        "as a sparse frequency table and a gene taxonomy mapping. Only "
+        "contigs shared by both input tables "
         "and assigned to a taxon with taxonomy are included."
     ),
     citations=[],

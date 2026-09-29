@@ -1,0 +1,4 @@
+Feature ID	Taxon ID	Gene ID	Taxon
+gt_09055e1590861ce6a179ccafe39f544f686d3d2854c452d26c9090510eff72fe	T1	geneA	Bacteria; Escherichia coli
+gt_345716e3c3a1693c479c3bc5a1c644a39d3324499e3cf911e46a78831deb02de	T1	gene B	Bacteria; Escherichia coli
+gt_efd6bff963d942dec7eafdb41532888d5cd9a61fc30371502581572b6e3713d8	T2	gene B	

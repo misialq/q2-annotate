@@ -23,6 +23,7 @@ class TestTFAAction(TestPluginBase):
         self.assertNotIn("tfa_by_taxon", plugin.methods)
         self.assertNotIn("tfa_by_function", plugin.methods)
         self.assertNotIn("estimate_tfa", plugin.pipelines)
+        self.assertNotIn("TFA", plugin.type_fragments)
 
     def _inputs(self, inventory_contigs=("C1", "C2", "C3")):
         abundance = qiime2.Artifact.import_data(
@@ -59,15 +60,21 @@ class TestTFAAction(TestPluginBase):
             taxon_to_contig_map=mapping,
         )
 
-    def test_estimate_returns_tfa_artifact(self):
+    def test_estimate_returns_frequency_and_gene_taxonomy(self):
         result = plugin.methods["estimate_tfa"](**self._inputs())
-        self.assertEqual(len(result), 1)
-        self.assertEqual(str(result.feature_load.type), "FeatureTable[TFA]")
+        self.assertEqual(len(result), 2)
+        self.assertEqual(str(result.feature_load.type), "FeatureTable[Frequency]")
+        self.assertEqual(str(result.gene_taxonomy.type), "FeatureData[GeneTaxonomy]")
         self.assertEqual(
             list(result.feature_load.view(biom.Table).ids(axis="sample")),
             ["S1", "S2"],
+        )
+        self.assertEqual(
+            list(result.feature_load.view(biom.Table).ids(axis="observation")),
+            list(result.gene_taxonomy.view(pd.DataFrame).index),
         )
 
     def test_empty_table_when_no_contigs_overlap(self):
         result = plugin.methods["estimate_tfa"](**self._inputs(("C4",)))
         self.assertEqual(result.feature_load.view(biom.Table).shape, (0, 2))
+        self.assertEqual(result.gene_taxonomy.view(pd.DataFrame).shape, (0, 3))

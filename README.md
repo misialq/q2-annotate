@@ -7,15 +7,26 @@ QIIME 2 plugin for functional annotation and taxonomic classification of shotgun
 
 ## Taxonomic functional attribution
 
-`estimate-tfa` returns one sparse `FeatureTable[TFA]` (Taxonomic Functional
-Attribution) artifact named `feature_load`. Its validated
-`TFAFeatureTableDirFmt` stores a BIOM v2.1 sparse matrix. Its columns retain
-the original sample IDs. Each row identifies one observed
-taxon and functional feature pair, encoded as a JSON array of two strings
-(for example, `["T1","bla_TEM"]`). The value for taxon *t*, function *f*,
-and sample *s* is the sum, over contigs assigned to *t*, of the contig's
-abundance in *s* multiplied by its count of *f*. Only pairs present in the
-feature inventory are stored as rows; zero sample values remain sparse.
+`estimate-tfa` returns two artifacts:
+
+- `feature_load`: a sparse `FeatureTable[Frequency]` with the original sample
+  IDs as columns and one feature per observed taxon/gene pair.
+- `gene_taxonomy`: `FeatureData[GeneTaxonomy]`, a readable TSV mapping each
+  `Feature ID` to its `Taxon ID`, `Gene ID`, and `Taxon` label.
+
+Feature IDs are `gt_` followed by the full SHA-256 digest of the UTF-8 JSON
+array `[taxon ID, gene ID]` (compact separators, no ASCII escaping). They are
+stable across runs and input ordering, and do not change when other pairs are
+added. The mapping preserves the original IDs without delimiter ambiguity.
+
+For taxon *t*, gene *g*, and sample *s*, a load is the sum over contigs assigned
+to *t* of contig abundance in *s* multiplied by the contig's count of *g*.
+Only pairs present in the gene inventory become rows; sample zeros stay
+sparse. Fractional abundance-weighted values are preserved without rounding,
+following the `FeatureTable[Frequency]` convention used by `q2-mag
+estimate-abundance` for RPKM/TPM. The obsolete `TFA` semantic type and its
+custom BIOM format have been removed; both outputs must be retained to
+interpret the table's feature IDs.
 
 The sample-resolved output replaces the older `estimate-tfa` layout, which
 summed abundances across samples and used functional feature IDs as sample IDs.
@@ -37,7 +48,7 @@ This QIIME 2 plugin contains actions used to annotate and classify (meta)genomes
 | classify-kraken2          | Classify reads/MAGs using Kraken 2.                                                    | [Kraken 2](https://ccb.jhu.edu/software/kraken2/)      |
 | construct-pangenome-index | Construct the human pangenome Bowtie 2 index.                                          | [Bowtie 2](https://bowtie-bio.sourceforge.net/bowtie2/index.shtml) |
 | estimate-bracken          | Perform read abundance re-estimation using Bracken.                                    | [Kraken 2](https://ccb.jhu.edu/software/bracken/) |
-| estimate-tfa              | Estimate sample-resolved TFA as one sparse artifact. | - |
+| estimate-tfa              | Estimate a sparse load table and gene taxonomy mapping. | - |
 | extract-annotations       | Extract annotation frequencies from all annotations.                                   | - |
 | fetch-diamond-db          | Fetch the complete Diamond database necessary to run the eggnog-diamond-search action. | [EggNOG mapper](https://github.com/eggnogdb/eggnog-mapper) |
 | fetch-eggnog-db           | Fetch the databases necessary to run the eggnog-annotate action.                       | [EggNOG mapper](https://github.com/eggnogdb/eggnog-mapper) |

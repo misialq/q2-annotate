@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 
-from .types._format import _pair_id
+from .types._utils import GENE_TAXONOMY_COLUMNS, _gene_taxonomy_id
 
 
 def estimate_tfa(
@@ -20,8 +20,14 @@ def estimate_tfa(
     feature_inventory: biom.Table,
     taxonomy: pd.DataFrame,
     taxon_to_contig_map: dict,
-) -> biom.Table:
+) -> (biom.Table, pd.DataFrame):
     """Estimate sparse, sample-resolved taxon/function loads."""
+    for table in (abundance_matrix, feature_inventory):
+        data = table.matrix_data.data
+        if not np.all(np.isfinite(data)) or np.any(data < 0):
+            raise ValueError(
+                "Abundances and gene counts must be finite and nonnegative."
+            )
     # Build a mapping from contig_id to taxon_id using taxon_to_contig_map and taxonomy
     contig_to_taxon_id = {}
     for taxon_id, contigs in taxon_to_contig_map.items():
@@ -47,13 +53,6 @@ def estimate_tfa(
 
     feature_ids = feature_inventory.ids(axis="observation")
     sample_ids = abundance_matrix.ids(axis="sample")
-
-    if not common_contigs:
-        return biom.Table(
-            sp.csr_matrix((0, len(sample_ids))),
-            observation_ids=[],
-            sample_ids=sample_ids,
-        )
 
     # Sort common contigs to ensure deterministic ordering
     common_contigs = sorted(list(common_contigs))
@@ -86,6 +85,7 @@ def estimate_tfa(
         contig_rows_by_taxon[contig_to_taxon_id[contig_id]].append(row)
     blocks = []
     pair_ids = []
+    gene_taxonomy_rows = []
     for taxon_id, contig_rows in sorted(contig_rows_by_taxon.items()):
         taxon_inventory = inventory[contig_rows, :]
         feature_columns = np.unique(taxon_inventory.indices)
@@ -94,17 +94,26 @@ def estimate_tfa(
         loads = (taxon_inventory[:, feature_columns].T @ A[contig_rows, :]).tocsr()
         loads.eliminate_zeros()
         blocks.append(loads)
-        pair_ids.extend(
-            _pair_id(taxon_id, feature_ids[column]) for column in feature_columns
-        )
+        for column in feature_columns:
+            gene_id = feature_ids[column]
+            pair_ids.append(_gene_taxonomy_id(taxon_id, gene_id))
+            gene_taxonomy_rows.append(
+                [taxon_id, gene_id, taxonomy.at[taxon_id, "Taxon"]]
+            )
 
     result_matrix = (
         sp.vstack(blocks, format="csr")
         if blocks
         else sp.csr_matrix((0, len(sample_ids)))
     )
-    return biom.Table(
-        result_matrix,
-        observation_ids=pair_ids,
-        sample_ids=sample_ids,
+    if not np.all(np.isfinite(result_matrix.data)):
+        raise ValueError("Estimated loads must be finite.")
+    gene_taxonomy = pd.DataFrame(
+        gene_taxonomy_rows,
+        index=pd.Index(pair_ids, name="Feature ID"),
+        columns=GENE_TAXONOMY_COLUMNS,
+    )
+    return (
+        biom.Table(result_matrix, observation_ids=pair_ids, sample_ids=sample_ids),
+        gene_taxonomy,
     )

@@ -6,9 +6,6 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 from qiime2.plugin import SemanticType
-from q2_types.feature_table import FeatureTable
+from q2_types.feature_data import FeatureData
 
-TFA = SemanticType(
-    "TFA",
-    variant_of=FeatureTable.field["content"],
-)
+GeneTaxonomy = SemanticType("GeneTaxonomy", variant_of=FeatureData.field["type"])

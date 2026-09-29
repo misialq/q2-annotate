@@ -5,99 +5,59 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
-import json
-from pathlib import Path
-
-import biom
-import h5py
-import numpy as np
 import pandas as pd
-import scipy.sparse as sp
+import qiime2
 from qiime2.plugin import ValidationError
 from qiime2.plugin.testing import TestPluginBase
 
-from q2_annotate.tfa import TFAFeatureTableFormat
+from q2_annotate.tfa import GeneTaxonomyFormat
 from q2_annotate.tfa.types._transformer import (
-    _biom_to_tfa_format,
-    _tfa_format_to_biom,
+    _gene_taxonomy_to_format,
+    _gene_taxonomy_to_dataframe,
 )
 
 
-class TestTFAFormat(TestPluginBase):
+class TestGeneTaxonomyFormat(TestPluginBase):
     package = "q2_annotate.tfa.tests"
 
-    def _table_from_tsv(self):
-        data = pd.read_csv(
-            self.get_data_path("tfa-table.tsv"),
+    def test_valid_and_empty_mapping(self):
+        for filename in ("gene-taxonomy.tsv", "gene-taxonomy-empty.tsv"):
+            GeneTaxonomyFormat(self.get_data_path(filename), mode="r").validate("max")
+
+    def test_rejects_invalid_mapping(self):
+        for filename in (
+            "gene-taxonomy-duplicate-id.tsv",
+            "gene-taxonomy-duplicate-pair.tsv",
+            "gene-taxonomy-empty-id.tsv",
+            "gene-taxonomy-bad-header.tsv",
+        ):
+            with self.assertRaises(ValidationError):
+                GeneTaxonomyFormat(self.get_data_path(filename), mode="r").validate(
+                    "max"
+                )
+
+    def test_mapping_transformer_round_trip_preserves_ids_and_empty_labels(self):
+        expected = pd.read_csv(
+            self.get_data_path("gene-taxonomy.tsv"),
             sep="\t",
-            dtype={"taxon_id": str, "function_id": str},
+            index_col=0,
+            dtype=str,
+            keep_default_na=False,
         )
-        sample_ids = list(data.columns[2:])
+        written = _gene_taxonomy_to_format(expected)
+        readable = GeneTaxonomyFormat(str(written), mode="r")
+        readable.validate("max")
+        pd.testing.assert_frame_equal(_gene_taxonomy_to_dataframe(readable), expected)
+        artifact = qiime2.Artifact.import_data("FeatureData[GeneTaxonomy]", expected)
+        pd.testing.assert_frame_equal(artifact.view(pd.DataFrame), expected)
 
-        return biom.Table(
-            sp.csr_matrix(data[sample_ids].to_numpy(dtype=float)),
-            observation_ids=[
-                json.dumps(
-                    [taxon_id, function_id],
-                    ensure_ascii=False,
-                    separators=(",", ":"),
-                )
-                for taxon_id, function_id in zip(
-                    data["taxon_id"], data["function_id"]
-                )
-            ],
-            sample_ids=sample_ids,
+    def test_transformer_rejects_duplicate_ids(self):
+        invalid = pd.read_csv(
+            self.get_data_path("gene-taxonomy-duplicate-id.tsv"),
+            sep="\t",
+            index_col=0,
+            dtype=str,
+            keep_default_na=False,
         )
-
-    def _write(self, path, table):
-        with h5py.File(path, "w") as handle:
-            table.to_hdf5(handle, generated_by="test")
-        return TFAFeatureTableFormat(str(path), mode="r")
-
-    def test_valid(self):
-        path = Path(self.temp_dir.name) / "tfa-table.biom"
-        self._write(path, self._table_from_tsv()).validate()
-
-    def test_rejects_unpaired_id(self):
-        table = self._table_from_tsv()
-        observation_ids = list(table.ids(axis="observation"))
-        observation_ids[0] = "T1"
-        invalid = biom.Table(
-            table.matrix_data.copy(),
-            observation_ids=observation_ids,
-            sample_ids=table.ids(axis="sample"),
-        )
-        path = Path(self.temp_dir.name) / "tfa-table.biom"
-        with self.assertRaisesRegex(ValidationError, "pair ID"):
-            self._write(path, invalid).validate()
-
-    def test_rejects_negative_load(self):
-        table = self._table_from_tsv()
-        matrix = table.matrix_data.tolil()
-        matrix[0, 0] = -1
-        invalid = biom.Table(
-            matrix.tocsr(),
-            observation_ids=table.ids(axis="observation"),
-            sample_ids=table.ids(axis="sample"),
-        )
-        path = Path(self.temp_dir.name) / "tfa-table.biom"
-        with self.assertRaisesRegex(ValidationError, "nonnegative"):
-            self._write(path, invalid).validate()
-
-    def test_sparse_transformer_round_trip(self):
-        expected = self._table_from_tsv()
-        written = _biom_to_tfa_format(expected)
-        readable = TFAFeatureTableFormat(str(written), mode="r")
-        readable.validate()
-        observed = _tfa_format_to_biom(readable)
-        self.assertEqual(
-            list(observed.ids(axis="sample")), list(expected.ids(axis="sample"))
-        )
-        self.assertEqual(
-            list(observed.ids(axis="observation")),
-            list(expected.ids(axis="observation")),
-        )
-        self.assertEqual(observed.matrix_data.nnz, 6)
-        np.testing.assert_array_equal(
-            observed.matrix_data.toarray(), expected.matrix_data.toarray()
-        )
+        with self.assertRaisesRegex(ValueError, "unique"):
+            _gene_taxonomy_to_format(invalid)
