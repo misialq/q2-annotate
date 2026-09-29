@@ -12,6 +12,7 @@ import scipy.sparse as sp
 from qiime2.plugin.testing import TestPluginBase
 
 from q2_annotate.tfa import estimate_tfa
+from q2_annotate.tfa.types._utils import _gene_taxonomy_id
 
 
 class TestTFA(TestPluginBase):
@@ -146,16 +147,23 @@ class TestTFA(TestPluginBase):
             mapping.sort_index(), reordered_mapping.sort_index()
         )
         self.assertEqual(list(table.ids(axis="observation")), list(mapping.index))
-        self.assertTrue(
-            all(
-                identifier.startswith("gt_") and len(identifier) == 67
-                for identifier in mapping.index
-            )
+        self.assertEqual(
+            set(mapping.index),
+            {"T1|bla_TEM", "T1|vanA", "T2|bla_TEM", "T2|mecA"},
         )
         pd.testing.assert_frame_equal(
             table.to_dataframe(dense=True).sort_index(),
             reordered.to_dataframe(dense=True).sort_index(),
         )
+
+    def test_readable_ids_escape_ambiguous_components(self):
+        cases = pd.read_csv(self.get_data_path("pair-ids.tsv"), sep="\t", dtype=str)
+        observed = [
+            _gene_taxonomy_id(taxon, gene)
+            for taxon, gene in zip(cases["Taxon ID"], cases["Gene ID"])
+        ]
+        self.assertEqual(observed, list(cases["Feature ID"]))
+        self.assertEqual(len(observed), len(set(observed)))
 
     def test_registered_estimate_outputs_and_fractional_values(self):
         import qiime2
@@ -187,7 +195,9 @@ class TestTFA(TestPluginBase):
                 "FeatureMap[TaxonomyToContigs]", self.mapping
             ),
         )
-        self.assertEqual(str(result.feature_load.type), "FeatureTable[Frequency]")
+        self.assertEqual(
+            str(result.feature_load.type), "FeatureTable[Frequency % Properties('tfa')]"
+        )
         self.assertEqual(str(result.gene_taxonomy.type), "FeatureData[GeneTaxonomy]")
         table, mapping = self.estimate(abundance=self.abundance * 0.01)
         np.testing.assert_array_equal(

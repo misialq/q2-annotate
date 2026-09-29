@@ -9,15 +9,21 @@ QIIME 2 plugin for functional annotation and taxonomic classification of shotgun
 
 `estimate-tfa` returns two artifacts:
 
-- `feature_load`: a sparse `FeatureTable[Frequency]` with the original sample
+- `feature_load`: a sparse `FeatureTable[Frequency % Properties("tfa")]` with the original sample
   IDs as columns and one feature per observed taxon/gene pair.
 - `gene_taxonomy`: `FeatureData[GeneTaxonomy]`, a readable TSV mapping each
   `Feature ID` to its `Taxon ID`, `Gene ID`, and `Taxon` label.
 
-Feature IDs are `gt_` followed by the full SHA-256 digest of the UTF-8 JSON
-array `[taxon ID, gene ID]` (compact separators, no ASCII escaping). They are
-stable across runs and input ordering, and do not change when other pairs are
-added. The mapping preserves the original IDs without delimiter ambiguity.
+Feature IDs concatenate the taxon and gene IDs with `|`, for example
+`T1|bla_TEM`. Each component is percent-encoded, so a literal `|` becomes
+`%7C`, `%` becomes `%25`, and a space becomes `%20`. This keeps IDs readable
+and distinct even when an input ID contains the separator. IDs are stable
+across runs and input ordering. The mapping retains the original, unescaped
+IDs and taxonomy labels.
+
+The `tfa` property marks tables whose rows represent taxon/gene pairs.
+They remain compatible with actions accepting ordinary frequency tables;
+TFA-specific actions require the property and the gene-taxonomy mapping.
 
 For taxon *t*, gene *g*, and sample *s*, a load is the sum over contigs assigned
 to *t* of contig abundance in *s* multiplied by the contig's count of *g*.

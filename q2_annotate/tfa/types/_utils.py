@@ -5,8 +5,7 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
-import hashlib
-import json
+from urllib.parse import quote
 
 import pandas as pd
 
@@ -14,11 +13,8 @@ GENE_TAXONOMY_COLUMNS = ["Taxon ID", "Gene ID", "Taxon"]
 
 
 def _gene_taxonomy_id(taxon_id: str, gene_id: str) -> str:
-    """Identify a pair independently of its order or surrounding dataset."""
-    pair = json.dumps(
-        [str(taxon_id), str(gene_id)], ensure_ascii=False, separators=(",", ":")
-    )
-    return "gt_" + hashlib.sha256(pair.encode("utf-8")).hexdigest()
+    """Join readable IDs, escaping the separator and literal percent signs."""
+    return f"{quote(str(taxon_id), safe='')}|{quote(str(gene_id), safe='')}"
 
 
 def _validate_gene_taxonomy(frame: pd.DataFrame) -> None:

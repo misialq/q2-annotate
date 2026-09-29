@@ -1788,7 +1788,7 @@ plugin.methods.register_function(
     inputs=tfa_inputs,
     parameters={},
     outputs=[
-        ("feature_load", FeatureTable[Frequency]),
+        ("feature_load", FeatureTable[Frequency % Properties("tfa")]),
         ("gene_taxonomy", FeatureData[GeneTaxonomy]),
     ],
     input_descriptions=tfa_input_descriptions,

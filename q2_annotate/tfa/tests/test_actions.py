@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import qiime2
 from qiime2.plugin.testing import TestPluginBase
+from q2_types.feature_table import FeatureTable, Frequency
 
 from q2_annotate.plugin_setup import plugin
 
@@ -63,7 +64,10 @@ class TestTFAAction(TestPluginBase):
     def test_estimate_returns_frequency_and_gene_taxonomy(self):
         result = plugin.methods["estimate_tfa"](**self._inputs())
         self.assertEqual(len(result), 2)
-        self.assertEqual(str(result.feature_load.type), "FeatureTable[Frequency]")
+        self.assertEqual(
+            str(result.feature_load.type), "FeatureTable[Frequency % Properties('tfa')]"
+        )
+        self.assertLessEqual(result.feature_load.type, FeatureTable[Frequency])
         self.assertEqual(str(result.gene_taxonomy.type), "FeatureData[GeneTaxonomy]")
         self.assertEqual(
             list(result.feature_load.view(biom.Table).ids(axis="sample")),
