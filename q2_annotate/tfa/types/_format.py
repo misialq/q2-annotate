@@ -9,7 +9,7 @@ import csv
 
 from qiime2.plugin import ValidationError, model
 
-from ._utils import GENE_TAXONOMY_COLUMNS
+GENE_TAXONOMY_COLUMNS = ["Taxon ID", "Gene ID", "Taxon"]
 
 
 class GeneTaxonomyFormat(model.TextFileFormat):

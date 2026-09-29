@@ -1776,7 +1776,7 @@ tfa_input_descriptions = {
         "IDs as sample IDs."
     ),
     "taxonomy": (
-        "Taxonomic assignments indexed by the taxon IDs in " "`taxon_to_contig_map`."
+        "Taxonomic assignments indexed by the taxon IDs in `taxon_to_contig_map`."
     ),
     "taxon_to_contig_map": (
         "Mapping of taxon IDs to the contig IDs assigned to each taxon."

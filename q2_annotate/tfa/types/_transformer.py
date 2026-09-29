@@ -10,15 +10,13 @@ import pandas as pd
 from q2_annotate.plugin_setup import plugin
 
 from ._format import GeneTaxonomyFormat
-from ._utils import _validate_gene_taxonomy
 
 
 @plugin.register_transformer
-def _gene_taxonomy_to_format(frame: pd.DataFrame) -> GeneTaxonomyFormat:
-    _validate_gene_taxonomy(frame)
+def _gene_taxonomy_to_format(df: pd.DataFrame) -> GeneTaxonomyFormat:
     result = GeneTaxonomyFormat()
     with result.open() as handle:
-        frame.to_csv(handle, sep="\t", index=True, index_label="Feature ID")
+        df.to_csv(handle, sep="\t", index=True, index_label="Feature ID")
     return result
 
 

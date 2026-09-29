@@ -51,7 +51,7 @@ class TestGeneTaxonomyFormat(TestPluginBase):
         artifact = qiime2.Artifact.import_data("FeatureData[GeneTaxonomy]", expected)
         pd.testing.assert_frame_equal(artifact.view(pd.DataFrame), expected)
 
-    def test_transformer_rejects_duplicate_ids(self):
+    def test_transformation_leaves_validation_to_format(self):
         invalid = pd.read_csv(
             self.get_data_path("gene-taxonomy-duplicate-id.tsv"),
             sep="\t",
@@ -59,5 +59,22 @@ class TestGeneTaxonomyFormat(TestPluginBase):
             dtype=str,
             keep_default_na=False,
         )
-        with self.assertRaisesRegex(ValueError, "unique"):
-            _gene_taxonomy_to_format(invalid)
+        written = _gene_taxonomy_to_format(invalid)
+        with self.assertRaisesRegex(ValidationError, "unique"):
+            written.validate("max")
+
+    def test_artifact_import_rejects_invalid_mapping(self):
+        for filename in (
+            "gene-taxonomy-duplicate-id.tsv",
+            "gene-taxonomy-duplicate-pair.tsv",
+            "gene-taxonomy-empty-id.tsv",
+        ):
+            invalid = pd.read_csv(
+                self.get_data_path(filename),
+                sep="\t",
+                index_col=0,
+                dtype=str,
+                keep_default_na=False,
+            )
+            with self.assertRaises(ValidationError):
+                qiime2.Artifact.import_data("FeatureData[GeneTaxonomy]", invalid)

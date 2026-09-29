@@ -12,7 +12,8 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 
-from .types._utils import GENE_TAXONOMY_COLUMNS, _gene_taxonomy_id
+from .types._format import GENE_TAXONOMY_COLUMNS
+from .types._utils import _gene_taxonomy_id
 
 
 def estimate_tfa(
