@@ -11,8 +11,7 @@ import pandas as pd
 import scipy.sparse as sp
 from qiime2.plugin.testing import TestPluginBase
 
-from q2_annotate.tfa import estimate_tfa
-from q2_annotate.tfa.types._utils import _gene_taxonomy_id
+from ..tfa import _gene_taxonomy_id, estimate_tfa
 
 
 class TestTFA(TestPluginBase):

@@ -6,6 +6,7 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 from collections import defaultdict
+from urllib.parse import quote
 
 import biom
 import numpy as np
@@ -13,7 +14,11 @@ import pandas as pd
 import scipy.sparse as sp
 
 from .types._format import GENE_TAXONOMY_COLUMNS
-from .types._utils import _gene_taxonomy_id
+
+
+def _gene_taxonomy_id(taxon_id: str, gene_id: str) -> str:
+    """Join readable IDs, escaping the separator and literal percent signs."""
+    return f"{quote(str(taxon_id), safe='')}|{quote(str(gene_id), safe='')}"
 
 
 def estimate_tfa(
