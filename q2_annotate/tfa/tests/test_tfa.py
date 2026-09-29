@@ -11,7 +11,12 @@ import pandas as pd
 import scipy.sparse as sp
 from qiime2.plugin.testing import TestPluginBase
 
-from ..tfa import _gene_taxonomy_id, estimate_tfa
+from ..tfa import (
+    _align_contig_matrices,
+    _gene_taxonomy_id,
+    _map_contigs_to_taxa,
+    estimate_tfa,
+)
 
 
 class TestTFA(TestPluginBase):
@@ -135,6 +140,41 @@ class TestTFA(TestPluginBase):
         mapping = {**self.mapping, "T2": ["C1", "C2", "C4", "C6"]}
         with self.assertRaisesRegex(ValueError, "multiple taxa"):
             self.estimate(mapping=mapping)
+
+    def test_contig_mapping_skips_absent_or_unassigned_taxonomy(self):
+        unassigned = self.taxonomy.copy()
+        unassigned.loc["T2", "Taxon"] = None
+        for taxonomy in (self.taxonomy.loc[["T1"]], unassigned):
+            self.assertEqual(
+                _map_contigs_to_taxa(taxonomy, self.mapping),
+                {"C1": "T1", "C3": "T1", "C5": "T1"},
+            )
+
+    def test_align_contig_matrices_preserves_axes_and_values(self):
+        abundance = self.abundance.T.iloc[::-1]
+        inventory = self.inventory.T.iloc[:, ::-1]
+        contigs, abundances, genes = _align_contig_matrices(
+            biom.Table(
+                abundance.values,
+                observation_ids=abundance.index,
+                sample_ids=abundance.columns,
+            ),
+            biom.Table(
+                inventory.values,
+                observation_ids=inventory.index,
+                sample_ids=inventory.columns,
+            ),
+            _map_contigs_to_taxa(self.taxonomy.loc[["T1"]], self.mapping),
+        )
+        self.assertEqual(contigs, ["C1", "C3", "C5"])
+        self.assertIsInstance(abundances, sp.csr_matrix)
+        self.assertIsInstance(genes, sp.csr_matrix)
+        np.testing.assert_array_equal(
+            abundances.toarray(), self.abundance[contigs].T.values
+        )
+        np.testing.assert_array_equal(
+            genes.toarray(), self.inventory.loc[contigs].values
+        )
 
     def test_stable_feature_ids_and_mapping(self):
         table, mapping = self.estimate()
