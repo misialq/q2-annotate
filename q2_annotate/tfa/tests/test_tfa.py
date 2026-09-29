@@ -6,6 +6,7 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 import biom
+import qiime2
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
@@ -35,6 +36,16 @@ class TestTFA(TestPluginBase):
         )
         mapping = pd.read_csv(self.get_data_path("taxon-to-contigs.tsv"), sep="\t")
         self.mapping = mapping.groupby("Taxon ID")["Contig ID"].apply(list).to_dict()
+        self.expected_tfa = pd.read_csv(
+            self.get_data_path("expected-tfa-table.tsv"), sep="\t", index_col=0
+        ).astype(float)
+        self.expected_gene_taxonomy = pd.read_csv(
+            self.get_data_path("expected-gene-taxonomy.tsv"),
+            sep="\t",
+            index_col=0,
+            dtype=str,
+            keep_default_na=False,
+        )
 
     def estimate(self, abundance=None, inventory=None, taxonomy=None, mapping=None):
         abundance = self.abundance if abundance is None else abundance
@@ -59,23 +70,18 @@ class TestTFA(TestPluginBase):
 
     def test_sample_resolved_values_and_sparse_pairs(self):
         observed, gene_taxonomy = self.estimate()
-        self.assertEqual(list(observed.ids(axis="sample")), ["S1", "S2", "S3"])
-        self.assertEqual(observed.shape, (4, 3))
         self.assertTrue(sp.issparse(observed.matrix_data))
-        self.assertEqual(observed.matrix_data.nnz, 12)
-        expected = {
-            ("T1", "bla_TEM"): [200, 240, 180],
-            ("T1", "vanA"): [100, 120, 90],
-            ("T2", "bla_TEM"): [50, 40, 60],
-            ("T2", "mecA"): [150, 120, 180],
-        }
-        for pair_id, values in zip(
-            observed.ids(axis="observation"), observed.matrix_data.toarray()
-        ):
-            np.testing.assert_array_equal(
-                values,
-                expected[tuple(gene_taxonomy.loc[pair_id, ["Taxon ID", "Gene ID"]])],
-            )
+        self.assertEqual(
+            observed.matrix_data.nnz, np.count_nonzero(self.expected_tfa.values)
+        )
+        pd.testing.assert_frame_equal(
+            observed.to_dataframe(dense=True).rename_axis("Feature ID"),
+            self.expected_tfa,
+        )
+        pd.testing.assert_frame_equal(gene_taxonomy, self.expected_gene_taxonomy)
+        self.assertEqual(
+            list(observed.ids(axis="observation")), list(gene_taxonomy.index)
+        )
 
     def test_no_common_contigs_retains_samples(self):
         observed, gene_taxonomy = self.estimate(mapping={"T1": ["not-a-contig"]})
@@ -186,10 +192,7 @@ class TestTFA(TestPluginBase):
             mapping.sort_index(), reordered_mapping.sort_index()
         )
         self.assertEqual(list(table.ids(axis="observation")), list(mapping.index))
-        self.assertEqual(
-            set(mapping.index),
-            {"T1|bla_TEM", "T1|vanA", "T2|bla_TEM", "T2|mecA"},
-        )
+        self.assertEqual(set(mapping.index), set(self.expected_gene_taxonomy.index))
         pd.testing.assert_frame_equal(
             table.to_dataframe(dense=True).sort_index(),
             reordered.to_dataframe(dense=True).sort_index(),
@@ -205,9 +208,6 @@ class TestTFA(TestPluginBase):
         self.assertEqual(len(observed), len(set(observed)))
 
     def test_registered_estimate_outputs_and_fractional_values(self):
-        import qiime2
-        import biom
-
         abundance = self.abundance.T * 0.01
         inventory = self.inventory.T
         result = self.plugin.methods["estimate_tfa"](
@@ -238,12 +238,15 @@ class TestTFA(TestPluginBase):
             str(result.feature_load.type), "FeatureTable[Frequency % Properties('tfa')]"
         )
         self.assertEqual(str(result.gene_taxonomy.type), "FeatureData[GeneTaxonomy]")
-        table, mapping = self.estimate(abundance=self.abundance * 0.01)
-        np.testing.assert_array_equal(
-            result.feature_load.view(biom.Table).matrix_data.toarray(),
-            table.matrix_data.toarray(),
+        pd.testing.assert_frame_equal(
+            result.feature_load.view(biom.Table)
+            .to_dataframe(dense=True)
+            .rename_axis("Feature ID"),
+            self.expected_tfa * 0.01,
         )
-        pd.testing.assert_frame_equal(result.gene_taxonomy.view(pd.DataFrame), mapping)
+        pd.testing.assert_frame_equal(
+            result.gene_taxonomy.view(pd.DataFrame), self.expected_gene_taxonomy
+        )
 
     def test_invalid_abundances_rejected(self):
         for invalid in (-1, float("nan"), float("inf")):

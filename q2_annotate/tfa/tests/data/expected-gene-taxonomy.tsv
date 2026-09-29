@@ -1,0 +1,5 @@
+Feature ID	Taxon ID	Gene ID	Taxon
+T1|bla_TEM	T1	bla_TEM	Escherichia coli
+T1|vanA	T1	vanA	Escherichia coli
+T2|bla_TEM	T2	bla_TEM	Klebsiella pneumoniae
+T2|mecA	T2	mecA	Klebsiella pneumoniae
