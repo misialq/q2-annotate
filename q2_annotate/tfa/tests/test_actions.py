@@ -64,17 +64,17 @@ class TestTFAAction(TestPluginBase):
         result = plugin.methods["estimate_tfa"](**self._inputs())
         self.assertEqual(len(result), 2)
         self.assertEqual(
-            result.feature_load.type, FeatureTable[Frequency % Properties("tfa")]
+            result.tfa.type, FeatureTable[Frequency % Properties("tfa")]
         )
         self.assertEqual(
             result.gene_taxonomy.type,
             FeatureData[Taxonomy % Properties("tfa")],
         )
         self.assertEqual(
-            list(result.feature_load.view(biom.Table).ids(axis="sample")),
+            list(result.tfa.view(biom.Table).ids(axis="sample")),
             ["S1", "S2"],
         )
         self.assertEqual(
-            list(result.feature_load.view(biom.Table).ids(axis="observation")),
+            list(result.tfa.view(biom.Table).ids(axis="observation")),
             list(result.gene_taxonomy.view(pd.DataFrame).index),
         )
