@@ -21,13 +21,7 @@ from q2_types.feature_data import (
     Taxonomy,
     ProteinSequence,
 )
-from q2_types.feature_table import (
-    FeatureTable,
-    Frequency,
-    PresenceAbsence,
-    RelativeFrequency,
-    Unconstrained,
-)
+from q2_types.feature_table import FeatureTable, Frequency, PresenceAbsence
 from q2_annotate.tfa.tfa import estimate_tfa
 from q2_types.per_sample_sequences import (
     SequencesWithQuality,
