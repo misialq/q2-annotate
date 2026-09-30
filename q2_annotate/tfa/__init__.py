@@ -5,7 +5,6 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
-from .types import GeneTaxonomy, GeneTaxonomyFormat, GeneTaxonomyDirFmt
-from .tfa import estimate_tfa, _gene_taxonomy_id
+from .tfa import estimate_tfa
 
-__all__ = ["GeneTaxonomy", "GeneTaxonomyFormat", "GeneTaxonomyDirFmt", "estimate_tfa"]
+__all__ = ["estimate_tfa"]

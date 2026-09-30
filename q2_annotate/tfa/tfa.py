@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 
-from .types._format import GENE_TAXONOMY_COLUMNS
+from .types import TFA_TAXONOMY_COLUMNS
 
 
 def _gene_taxonomy_id(taxon_id: str, gene_id: str) -> str:
@@ -27,7 +27,7 @@ def _map_contigs_to_taxa(
     """Invert assignments for taxa with taxonomy, rejecting ambiguous contigs."""
     contig_to_taxon = {}
     for taxon_id, contigs in taxon_to_contig_map.items():
-        if taxon_id not in taxonomy.index or pd.isna(taxonomy.at[taxon_id, "Taxon"]):
+        if taxon_id not in taxonomy.index:
             continue
         for contig_id in contigs:
             if contig_id in contig_to_taxon and contig_to_taxon[contig_id] != taxon_id:
@@ -37,12 +37,12 @@ def _map_contigs_to_taxa(
 
 
 def _align_contig_matrices(
-    abundance_matrix: biom.Table,
+    contig_abundance: biom.Table,
     feature_inventory: biom.Table,
     contig_to_taxon: dict[str, str],
 ) -> tuple[list[str], sp.csr_matrix, sp.csr_matrix]:
     """Align shared contigs as rows of abundance and gene inventory matrices."""
-    abundance_ids = list(abundance_matrix.ids(axis="observation"))
+    abundance_ids = list(contig_abundance.ids(axis="observation"))
     inventory_ids = list(feature_inventory.ids(axis="sample"))
     contig_ids = sorted(set(abundance_ids) & set(inventory_ids) & set(contig_to_taxon))
     abundance_index = {identifier: row for row, identifier in enumerate(abundance_ids)}
@@ -51,7 +51,7 @@ def _align_contig_matrices(
     }
 
     # Both matrices have the same contig rows; columns are samples and genes.
-    abundances = abundance_matrix.matrix_data.tocsr()[
+    abundances = contig_abundance.matrix_data.tocsr()[
         [abundance_index[identifier] for identifier in contig_ids], :
     ]
     inventory = feature_inventory.matrix_data.tocsc()[
@@ -68,7 +68,7 @@ def _calculate_taxon_gene_loads(
     contig_to_taxon: dict[str, str],
     gene_ids: list[str],
 ) -> tuple[sp.csr_matrix, list[tuple[str, str]]]:
-    """Calculate pair-by-sample loads, retaining only genes observed in each taxon."""
+    """Calculate pair-by-sample loads, omitting pairs with no sample load."""
     contig_rows_by_taxon = defaultdict(list)
     for row, contig_id in enumerate(contig_ids):
         contig_rows_by_taxon[contig_to_taxon[contig_id]].append(row)
@@ -84,8 +84,12 @@ def _calculate_taxon_gene_loads(
             taxon_inventory[:, gene_columns].T @ abundances[contig_rows, :]
         ).tocsr()
         loads.eliminate_zeros()
-        blocks.append(loads)
-        pairs.extend((taxon_id, gene_ids[column]) for column in gene_columns)
+        nonzero_rows = np.flatnonzero(np.diff(loads.indptr))
+        if len(nonzero_rows):
+            blocks.append(loads[nonzero_rows, :])
+            pairs.extend(
+                (taxon_id, gene_ids[gene_columns[row]]) for row in nonzero_rows
+            )
 
     matrix = (
         sp.vstack(blocks, format="csr")
@@ -98,22 +102,15 @@ def _calculate_taxon_gene_loads(
 
 
 def estimate_tfa(
-    abundance_matrix: biom.Table,
+    contig_abundance: biom.Table,
     feature_inventory: biom.Table,
     taxonomy: pd.DataFrame,
     taxon_to_contig_map: dict,
 ) -> (biom.Table, pd.DataFrame):
     """Estimate sparse, sample-resolved taxon/function loads."""
-    for table in (abundance_matrix, feature_inventory):
-        data = table.matrix_data.data
-        if not np.all(np.isfinite(data)) or np.any(data < 0):
-            raise ValueError(
-                "Abundances and gene counts must be finite and nonnegative."
-            )
-
     contig_to_taxon = _map_contigs_to_taxa(taxonomy, taxon_to_contig_map)
     contig_ids, abundances, inventory = _align_contig_matrices(
-        abundance_matrix, feature_inventory, contig_to_taxon
+        contig_abundance, feature_inventory, contig_to_taxon
     )
     loads, pairs = _calculate_taxon_gene_loads(
         abundances,
@@ -123,20 +120,23 @@ def estimate_tfa(
         list(feature_inventory.ids(axis="observation")),
     )
 
+    if not pairs:
+        raise ValueError("No taxon/gene pairs have nonzero loads in the input samples.")
+
     pair_ids = [_gene_taxonomy_id(taxon_id, gene_id) for taxon_id, gene_id in pairs]
     gene_taxonomy = pd.DataFrame(
         [
-            [taxon_id, gene_id, taxonomy.at[taxon_id, "Taxon"]]
+            [taxonomy.at[taxon_id, "Taxon"], taxon_id, gene_id]
             for taxon_id, gene_id in pairs
         ],
         index=pd.Index(pair_ids, name="Feature ID"),
-        columns=GENE_TAXONOMY_COLUMNS,
+        columns=TFA_TAXONOMY_COLUMNS,
     )
     return (
         biom.Table(
             loads,
             observation_ids=pair_ids,
-            sample_ids=abundance_matrix.ids(axis="sample"),
+            sample_ids=contig_abundance.ids(axis="sample"),
         ),
         gene_taxonomy,
     )

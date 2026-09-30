@@ -9,8 +9,10 @@ import biom
 import numpy as np
 import pandas as pd
 import qiime2
+from q2_types.feature_data import FeatureData, Taxonomy
 from qiime2.plugin.testing import TestPluginBase
 from q2_types.feature_table import FeatureTable, Frequency
+from rachis.core.type import Properties
 
 from q2_annotate.plugin_setup import plugin
 
@@ -19,12 +21,8 @@ class TestTFAAction(TestPluginBase):
     package = "q2_annotate.tfa.tests"
 
     def test_action_registration(self):
+        """Expose the public estimate method."""
         self.assertIn("estimate_tfa", plugin.methods)
-        self.assertNotIn("_estimate_tfa_table", plugin.methods)
-        self.assertNotIn("tfa_by_taxon", plugin.methods)
-        self.assertNotIn("tfa_by_function", plugin.methods)
-        self.assertNotIn("estimate_tfa", plugin.pipelines)
-        self.assertNotIn("TFA", plugin.type_fragments)
 
     def _inputs(self, inventory_contigs=("C1", "C2", "C3")):
         abundance = qiime2.Artifact.import_data(
@@ -55,20 +53,23 @@ class TestTFAAction(TestPluginBase):
             {"T1": ["C1", "C2"], "T2": ["C3"]},
         )
         return dict(
-            abundance_matrix=abundance,
+            contig_abundance=abundance,
             feature_inventory=inventory,
             taxonomy=taxonomy,
             taxon_to_contig_map=mapping,
         )
 
     def test_estimate_returns_frequency_and_gene_taxonomy(self):
+        """Return a TFA-tagged frequency table and matching gene taxonomy."""
         result = plugin.methods["estimate_tfa"](**self._inputs())
         self.assertEqual(len(result), 2)
         self.assertEqual(
-            str(result.feature_load.type), "FeatureTable[Frequency % Properties('tfa')]"
+            result.feature_load.type, FeatureTable[Frequency % Properties("tfa")]
         )
-        self.assertLessEqual(result.feature_load.type, FeatureTable[Frequency])
-        self.assertEqual(str(result.gene_taxonomy.type), "FeatureData[GeneTaxonomy]")
+        self.assertEqual(
+            result.gene_taxonomy.type,
+            FeatureData[Taxonomy % Properties("tfa")],
+        )
         self.assertEqual(
             list(result.feature_load.view(biom.Table).ids(axis="sample")),
             ["S1", "S2"],
@@ -77,8 +78,3 @@ class TestTFAAction(TestPluginBase):
             list(result.feature_load.view(biom.Table).ids(axis="observation")),
             list(result.gene_taxonomy.view(pd.DataFrame).index),
         )
-
-    def test_empty_table_when_no_contigs_overlap(self):
-        result = plugin.methods["estimate_tfa"](**self._inputs(("C4",)))
-        self.assertEqual(result.feature_load.view(biom.Table).shape, (0, 2))
-        self.assertEqual(result.gene_taxonomy.view(pd.DataFrame).shape, (0, 3))

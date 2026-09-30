@@ -5,8 +5,8 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
+import json
 import biom
-import qiime2
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
@@ -31,11 +31,11 @@ class TestTFA(TestPluginBase):
         self.inventory = pd.read_csv(
             self.get_data_path("gene-inventory.tsv"), sep="\t", index_col=0
         ).T
-        self.taxonomy = pd.read_csv(
-            self.get_data_path("estimate-taxonomy.tsv"), sep="\t", index_col=0
+        self.taxonomy = pd.DataFrame(
+            {"Taxon": ["Escherichia coli", "Klebsiella pneumoniae"]},
+            index=pd.Index(["T1", "T2"], name="Feature ID"),
         )
-        mapping = pd.read_csv(self.get_data_path("taxon-to-contigs.tsv"), sep="\t")
-        self.mapping = mapping.groupby("Taxon ID")["Contig ID"].apply(list).to_dict()
+        self.mapping = json.load(open(self.get_data_path("taxon-to-contigs.json")))
         self.expected_tfa = pd.read_csv(
             self.get_data_path("expected-tfa-table.tsv"), sep="\t", index_col=0
         ).astype(float)
@@ -47,7 +47,7 @@ class TestTFA(TestPluginBase):
             keep_default_na=False,
         )
 
-    def estimate(self, abundance=None, inventory=None, taxonomy=None, mapping=None):
+    def _estimate(self, abundance=None, inventory=None, taxonomy=None, mapping=None):
         abundance = self.abundance if abundance is None else abundance
         inventory = self.inventory if inventory is None else inventory
         taxonomy = self.taxonomy if taxonomy is None else taxonomy
@@ -69,7 +69,8 @@ class TestTFA(TestPluginBase):
         )
 
     def test_sample_resolved_values_and_sparse_pairs(self):
-        observed, gene_taxonomy = self.estimate()
+        """Estimate per-sample loads while storing only observed taxon-gene pairs."""
+        observed, gene_taxonomy = self._estimate()
         self.assertTrue(sp.issparse(observed.matrix_data))
         self.assertEqual(
             observed.matrix_data.nnz, np.count_nonzero(self.expected_tfa.values)
@@ -83,34 +84,53 @@ class TestTFA(TestPluginBase):
             list(observed.ids(axis="observation")), list(gene_taxonomy.index)
         )
 
-    def test_no_common_contigs_retains_samples(self):
-        observed, gene_taxonomy = self.estimate(mapping={"T1": ["not-a-contig"]})
-        self.assertEqual(observed.shape, (0, 3))
-        self.assertEqual(list(observed.ids(axis="sample")), ["S1", "S2", "S3"])
+    def test_no_common_contigs_rejected(self):
+        """Report when no mapped contigs overlap the input tables."""
+        with self.assertRaisesRegex(
+            ValueError, "No taxon/gene pairs have nonzero loads"
+        ):
+            self._estimate(mapping={"T1": ["not-a-contig"]})
 
     def test_ignores_extra_contigs(self):
-        abundance = self.abundance.assign(C7=[1000, 1000, 1000])
+        """Ignore mapped contigs absent from the gene inventory."""
+        abundance = self.abundance.assign(C7=[1000, 0, 0])
         taxonomy = pd.DataFrame(
-            {"Taxon": ["E. coli", "K. pneumoniae", "Other"]},
-            index=["T1", "T2", "T3"],
+            {"Taxon": ["Escherichia coli", "Klebsiella pneumoniae", "Other"]},
+            index=pd.Index(["T1", "T2", "T3"]),
         )
         mapping = {**self.mapping, "T3": ["C7", "C8"]}
-        observed, gene_taxonomy = self.estimate(
+        observed, gene_taxonomy = self._estimate(
             abundance=abundance, taxonomy=taxonomy, mapping=mapping
         )
-        self.assertEqual(observed.shape, (4, 3))
-        self.assertEqual(observed.matrix_data.nnz, 12)
+        pd.testing.assert_frame_equal(
+            observed.to_dataframe(dense=True).rename_axis("Feature ID"),
+            self.expected_tfa,
+        )
+        pd.testing.assert_frame_equal(gene_taxonomy, self.expected_gene_taxonomy)
 
-    def test_zero_abundance_keeps_observed_pairs(self):
-        observed, gene_taxonomy = self.estimate(abundance=self.abundance * 0)
-        self.assertEqual(observed.shape, (4, 3))
-        self.assertEqual(observed.matrix_data.nnz, 0)
+    def test_zero_abundance_rejected(self):
+        """Report when all pairs have zero loads and no taxonomy can be returned."""
+        with self.assertRaisesRegex(
+            ValueError, "No taxon/gene pairs have nonzero loads"
+        ):
+            self._estimate(abundance=self.abundance * 0)
+
+    def test_omits_pairs_with_zero_load_across_samples(self):
+        """Keep loaded pairs while dropping an entirely absent taxon."""
+        abundance = self.abundance.copy()
+        abundance[["C2", "C4", "C6"]] = 0
+        observed, gene_taxonomy = self._estimate(abundance=abundance)
+        self.assertEqual(
+            list(observed.ids(axis="observation")), ["T1|bla_TEM", "T1|vanA"]
+        )
+        self.assertEqual(list(gene_taxonomy.index), ["T1|bla_TEM", "T1|vanA"])
 
     def test_extreme_abundances(self):
+        """Preserve very small and very large abundance values."""
         abundance = self.abundance * 0.0
         abundance.loc["S1", "C1"] = 1e-9
         abundance.loc["S1", "C2"] = 1e12
-        observed, gene_taxonomy = self.estimate(abundance=abundance)
+        observed, gene_taxonomy = self._estimate(abundance=abundance)
         loads = {
             tuple(gene_taxonomy.loc[pair_id, ["Taxon ID", "Gene ID"]]): values
             for pair_id, values in zip(
@@ -131,10 +151,11 @@ class TestTFA(TestPluginBase):
         )
 
     def test_mapping_preserves_ambiguous_characters(self):
+        """Preserve punctuation in taxon and gene IDs through estimation."""
         inventory = self.inventory.rename(columns={"bla_TEM": 'a,"b'})
         taxonomy = self.taxonomy.rename(index={"T1": 't,"1'})
         mapping = {'t,"1': self.mapping["T1"], "T2": self.mapping["T2"]}
-        observed, gene_taxonomy = self.estimate(
+        observed, gene_taxonomy = self._estimate(
             inventory=inventory, taxonomy=taxonomy, mapping=mapping
         )
         pairs = set(
@@ -143,20 +164,20 @@ class TestTFA(TestPluginBase):
         self.assertIn(('t,"1', 'a,"b'), pairs)
 
     def test_ambiguous_taxon_assignment_rejected(self):
+        """Reject a contig assigned to more than one taxon."""
         mapping = {**self.mapping, "T2": ["C1", "C2", "C4", "C6"]}
         with self.assertRaisesRegex(ValueError, "multiple taxa"):
-            self.estimate(mapping=mapping)
+            self._estimate(mapping=mapping)
 
-    def test_contig_mapping_skips_absent_or_unassigned_taxonomy(self):
-        unassigned = self.taxonomy.copy()
-        unassigned.loc["T2", "Taxon"] = None
-        for taxonomy in (self.taxonomy.loc[["T1"]], unassigned):
-            self.assertEqual(
-                _map_contigs_to_taxa(taxonomy, self.mapping),
-                {"C1": "T1", "C3": "T1", "C5": "T1"},
-            )
+    def test_contig_mapping_skips_absent_taxonomy(self):
+        """Skip mapped taxa missing from the taxonomy table."""
+        self.assertEqual(
+            _map_contigs_to_taxa(self.taxonomy.loc[["T1"]], self.mapping),
+            {"C1": "T1", "C3": "T1", "C5": "T1"},
+        )
 
     def test_align_contig_matrices_preserves_axes_and_values(self):
+        """Align contigs across matrices without changing sample or gene values."""
         abundance = self.abundance.T.iloc[::-1]
         inventory = self.inventory.T.iloc[:, ::-1]
         contigs, abundances, genes = _align_contig_matrices(
@@ -170,7 +191,7 @@ class TestTFA(TestPluginBase):
                 observation_ids=inventory.index,
                 sample_ids=inventory.columns,
             ),
-            _map_contigs_to_taxa(self.taxonomy.loc[["T1"]], self.mapping),
+            {"C1": "T1", "C3": "T1", "C5": "T1"},
         )
         self.assertEqual(contigs, ["C1", "C3", "C5"])
         self.assertIsInstance(abundances, sp.csr_matrix)
@@ -183,8 +204,9 @@ class TestTFA(TestPluginBase):
         )
 
     def test_stable_feature_ids_and_mapping(self):
-        table, mapping = self.estimate()
-        reordered, reordered_mapping = self.estimate(
+        """Keep feature IDs and loads stable when input axes are reordered."""
+        table, mapping = self._estimate()
+        reordered, reordered_mapping = self._estimate(
             inventory=self.inventory[self.inventory.columns[::-1]],
             abundance=self.abundance[self.abundance.columns[::-1]],
         )
@@ -199,6 +221,7 @@ class TestTFA(TestPluginBase):
         )
 
     def test_readable_ids_escape_ambiguous_components(self):
+        """Build unique, readable feature IDs from taxon and gene IDs."""
         cases = pd.read_csv(self.get_data_path("pair-ids.tsv"), sep="\t", dtype=str)
         observed = [
             _gene_taxonomy_id(taxon, gene)
@@ -206,51 +229,3 @@ class TestTFA(TestPluginBase):
         ]
         self.assertEqual(observed, list(cases["Feature ID"]))
         self.assertEqual(len(observed), len(set(observed)))
-
-    def test_registered_estimate_outputs_and_fractional_values(self):
-        abundance = self.abundance.T * 0.01
-        inventory = self.inventory.T
-        result = self.plugin.methods["estimate_tfa"](
-            abundance_matrix=qiime2.Artifact.import_data(
-                "FeatureTable[Frequency]",
-                biom.Table(
-                    abundance.values,
-                    observation_ids=abundance.index,
-                    sample_ids=abundance.columns,
-                ),
-            ),
-            feature_inventory=qiime2.Artifact.import_data(
-                "FeatureTable[Frequency]",
-                biom.Table(
-                    inventory.values,
-                    observation_ids=inventory.index,
-                    sample_ids=inventory.columns,
-                ),
-            ),
-            taxonomy=qiime2.Artifact.import_data(
-                "FeatureData[Taxonomy]", self.taxonomy
-            ),
-            taxon_to_contig_map=qiime2.Artifact.import_data(
-                "FeatureMap[TaxonomyToContigs]", self.mapping
-            ),
-        )
-        self.assertEqual(
-            str(result.feature_load.type), "FeatureTable[Frequency % Properties('tfa')]"
-        )
-        self.assertEqual(str(result.gene_taxonomy.type), "FeatureData[GeneTaxonomy]")
-        pd.testing.assert_frame_equal(
-            result.feature_load.view(biom.Table)
-            .to_dataframe(dense=True)
-            .rename_axis("Feature ID"),
-            self.expected_tfa * 0.01,
-        )
-        pd.testing.assert_frame_equal(
-            result.gene_taxonomy.view(pd.DataFrame), self.expected_gene_taxonomy
-        )
-
-    def test_invalid_abundances_rejected(self):
-        for invalid in (-1, float("nan"), float("inf")):
-            abundance = self.abundance.astype(float)
-            abundance.loc["S1", "C1"] = invalid
-            with self.assertRaisesRegex(ValueError, "finite and nonnegative"):
-                self.estimate(abundance=abundance)

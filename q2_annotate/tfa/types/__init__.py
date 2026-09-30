@@ -5,7 +5,6 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
-from ._type import GeneTaxonomy
-from ._format import GeneTaxonomyFormat, GeneTaxonomyDirFmt
+TFA_TAXONOMY_COLUMNS = ["Taxon", "Taxon ID", "Gene ID"]
 
-__all__ = ["GeneTaxonomy", "GeneTaxonomyFormat", "GeneTaxonomyDirFmt"]
+__all__ = ["TFA_TAXONOMY_COLUMNS"]

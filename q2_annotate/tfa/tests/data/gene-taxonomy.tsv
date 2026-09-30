@@ -1,4 +1,4 @@
-Feature ID	Taxon ID	Gene ID	Taxon
-T1|geneA	T1	geneA	Bacteria; Escherichia coli
-T1|gene%20B	T1	gene B	Bacteria; Escherichia coli
-T2|gene%20B	T2	gene B	
+Feature ID	Taxon	Taxon ID	Gene ID
+T1|geneA	Bacteria; Escherichia coli	T1	geneA
+T1|gene%20B	Bacteria; Escherichia coli	T1	gene B
+T2|gene%20B	Bacteria; Klebsiella pneumoniae	T2	gene B

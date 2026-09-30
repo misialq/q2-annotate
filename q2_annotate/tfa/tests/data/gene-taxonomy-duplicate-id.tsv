@@ -1,3 +1,3 @@
-Feature ID	Taxon ID	Gene ID	Taxon
-F1	T1	geneA	Taxon one
-F1	T2	geneB	Taxon two
+Feature ID	Taxon	Taxon ID	Gene ID
+F1	Taxon one	T1	geneA
+F1	Taxon two	T2	geneB

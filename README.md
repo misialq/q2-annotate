@@ -11,8 +11,8 @@ QIIME 2 plugin for functional annotation and taxonomic classification of shotgun
 
 - `feature_load`: a sparse `FeatureTable[Frequency % Properties("tfa")]` with the original sample
   IDs as columns and one feature per observed taxon/gene pair.
-- `gene_taxonomy`: `FeatureData[GeneTaxonomy]`, a readable TSV mapping each
-  `Feature ID` to its `Taxon ID`, `Gene ID`, and `Taxon` label.
+- `gene_taxonomy`: `FeatureData[Taxonomy % Properties("tfa")]`, a standard
+  taxonomy TSV with `Feature ID` and `Taxon` followed by `Taxon ID` and `Gene ID`.
 
 Feature IDs concatenate the taxon and gene IDs with `|`, for example
 `T1|bla_TEM`. Each component is percent-encoded, so a literal `|` becomes
@@ -21,18 +21,20 @@ and distinct even when an input ID contains the separator. IDs are stable
 across runs and input ordering. The mapping retains the original, unescaped
 IDs and taxonomy labels.
 
-The `tfa` property marks tables whose rows represent taxon/gene pairs.
-They remain compatible with actions accepting ordinary frequency tables;
-TFA-specific actions require the property and the gene-taxonomy mapping.
+The `tfa` property marks the frequency table and its companion taxonomy as
+representing taxon/gene pairs. They remain compatible with actions accepting
+ordinary frequency tables and taxonomy artifacts. The taxonomy's semantic
+validator requires nonempty IDs and labels and unique taxon/gene pairs.
 
 For taxon *t*, gene *g*, and sample *s*, a load is the sum over contigs assigned
 to *t* of contig abundance in *s* multiplied by the contig's count of *g*.
-Only pairs present in the gene inventory become rows; sample zeros stay
-sparse. Fractional abundance-weighted values are preserved without rounding,
+Only pairs with a nonzero load in at least one sample become rows; sample zeros
+stay sparse. Estimation reports an error when no pairs remain, because the
+standard taxonomy format requires at least one record.
+Fractional abundance-weighted values are preserved without rounding,
 following the `FeatureTable[Frequency]` convention used by `q2-mag
-estimate-abundance` for RPKM/TPM. The obsolete `TFA` semantic type and its
-custom BIOM format have been removed; both outputs must be retained to
-interpret the table's feature IDs.
+estimate-abundance` for RPKM/TPM. Both outputs must be retained to interpret
+the table's feature IDs.
 
 The sample-resolved output replaces the older `estimate-tfa` layout, which
 summed abundances across samples and used functional feature IDs as sample IDs.

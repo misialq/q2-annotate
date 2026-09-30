@@ -28,11 +28,6 @@ from q2_types.feature_table import (
     RelativeFrequency,
     Unconstrained,
 )
-from q2_annotate.tfa import (
-    GeneTaxonomyDirFmt,
-    GeneTaxonomyFormat,
-    GeneTaxonomy,
-)
 from q2_annotate.tfa.tfa import estimate_tfa
 from q2_types.per_sample_sequences import (
     SequencesWithQuality,
@@ -1746,30 +1741,18 @@ plugin.pipelines.register_function(
     ),
 )
 
-plugin.register_formats(GeneTaxonomyFormat, GeneTaxonomyDirFmt)
-plugin.register_semantic_types(GeneTaxonomy)
-plugin.register_artifact_class(
-    FeatureData[GeneTaxonomy],
-    directory_format=GeneTaxonomyDirFmt,
-    description=(
-        "Mapping from feature IDs to taxon IDs, gene IDs, and taxonomy labels "
-        "for taxonomic functional attribution."
-    ),
-)
-
-importlib.import_module("q2_annotate.tfa.types._transformer")
+importlib.import_module("q2_annotate.tfa.types._validators")
 
 tfa_inputs = {
-    "abundance_matrix": FeatureTable[Frequency | RelativeFrequency | Unconstrained],
+    "contig_abundance": FeatureTable[Frequency],
     "feature_inventory": FeatureTable[Frequency],
     "taxonomy": FeatureData[Taxonomy],
     "taxon_to_contig_map": FeatureMap[TaxonomyToContigs],
 }
 tfa_input_descriptions = {
-    "abundance_matrix": (
+    "contig_abundance": (
         "Nonnegative contig abundances across samples, with contig IDs "
-        "as feature IDs. Counts, relative frequencies, and normalized "
-        "loads are accepted."
+        "as feature IDs."
     ),
     "feature_inventory": (
         "Counts of each functional feature on each contig, with contig "
@@ -1788,13 +1771,13 @@ plugin.methods.register_function(
     inputs=tfa_inputs,
     parameters={},
     outputs=[
-        ("feature_load", FeatureTable[Frequency % Properties("tfa")]),
-        ("gene_taxonomy", FeatureData[GeneTaxonomy]),
+        ("tfa", FeatureTable[Frequency % Properties("tfa")]),
+        ("gene_taxonomy", FeatureData[Taxonomy % Properties("tfa")]),
     ],
     input_descriptions=tfa_input_descriptions,
     parameter_descriptions={},
     output_descriptions={
-        "feature_load": (
+        "tfa": (
             "Sparse abundance-weighted loads for taxon/function pairs "
             "across the original samples."
         ),
@@ -1806,8 +1789,8 @@ plugin.methods.register_function(
     description=(
         "Estimate sample-resolved functional loads for taxon/function pairs "
         "as a sparse frequency table and a gene taxonomy mapping. Only "
-        "contigs shared by both input tables "
-        "and assigned to a taxon with taxonomy are included."
+        "contigs shared by both input tables and assigned to a taxon with "
+        "taxonomy are included."
     ),
     citations=[],
 )
