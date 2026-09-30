@@ -63,9 +63,7 @@ class TestTFAAction(TestPluginBase):
         """Return a TFA-tagged frequency table and matching gene taxonomy."""
         result = plugin.methods["estimate_tfa"](**self._inputs())
         self.assertEqual(len(result), 2)
-        self.assertEqual(
-            result.tfa.type, FeatureTable[Frequency % Properties("tfa")]
-        )
+        self.assertEqual(result.tfa.type, FeatureTable[Frequency % Properties("tfa")])
         self.assertEqual(
             result.gene_taxonomy.type,
             FeatureData[Taxonomy % Properties("tfa")],
