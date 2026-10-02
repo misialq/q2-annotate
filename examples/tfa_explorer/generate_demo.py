@@ -10,7 +10,7 @@ from qiime2.sdk import PluginManager
 from scipy.sparse import csr_matrix
 
 from q2_annotate.plugin_setup import plugin as annotate_plugin
-from q2_annotate.tfa.types._format import _pair_id
+from q2_annotate.tfa.tfa import _gene_taxonomy_id
 from q2_types.plugin_setup import plugin as types_plugin
 
 HERE = Path(__file__).resolve().parent
@@ -133,19 +133,40 @@ def write_artifacts():
     table = biom.Table(
         csr_matrix(frame[sample_ids].to_numpy(dtype=float)),
         observation_ids=[
-            _pair_id(taxon, function)
+            _gene_taxonomy_id(taxon, function)
             for taxon, function in zip(frame.taxon_id, frame.function_id)
         ],
         sample_ids=sample_ids,
     )
-    qiime2.Artifact.import_data("FeatureTable[TFA]", table).save(
-        HERE / "feature-load.qza"
+    feature_load = qiime2.Artifact.import_data(
+        "FeatureTable[Frequency % Properties('tfa')]", table
     )
+    feature_load.save(HERE / "feature-load.qza")
     taxonomy = pd.read_csv(HERE / "taxonomy.tsv", sep="\t", index_col=0)
     taxonomy.index.name = "Feature ID"
-    qiime2.Artifact.import_data("FeatureData[Taxonomy]", taxonomy).save(
-        HERE / "taxonomy.qza"
+    mapping = pd.DataFrame(
+        {
+            "Taxon": [
+                taxonomy.at[taxon, "Taxon"] if taxon in taxonomy.index else taxon
+                for taxon in frame.taxon_id
+            ],
+            "Taxon ID": frame.taxon_id.to_numpy(),
+            "Gene ID": frame.function_id.to_numpy(),
+        },
+        index=pd.Index(table.ids(axis="observation"), name="Feature ID"),
     )
+    mapping.to_csv(HERE / "gene-taxonomy.tsv", sep="\t")
+    gene_taxonomy = qiime2.Artifact.import_data(
+        "FeatureData[Taxonomy % Properties('tfa')]", mapping
+    )
+    gene_taxonomy.save(HERE / "gene-taxonomy.qza")
+    result = annotate_plugin.visualizers["explore_tfa"](
+        feature_load=feature_load,
+        gene_taxonomy=gene_taxonomy,
+        metadata=qiime2.Metadata.load(HERE / "sample-metadata.tsv"),
+    )
+    result.visualization.save(HERE / "tfa-explorer-demo.qzv")
+    result.visualization.save(HERE / "tfa-explorer-demo-heatmap-metric.qzv")
 
 
 if __name__ == "__main__":

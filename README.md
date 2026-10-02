@@ -9,7 +9,7 @@ QIIME 2 plugin for functional annotation and taxonomic classification of shotgun
 
 `estimate-tfa` returns two artifacts:
 
-- `feature_load`: a sparse `FeatureTable[Frequency % Properties("tfa")]` with the original sample
+- `tfa`: a sparse `FeatureTable[Frequency % Properties("tfa")]` with the original sample
   IDs as columns and one feature per observed taxon/gene pair.
 - `gene_taxonomy`: `FeatureData[Taxonomy % Properties("tfa")]`, a standard
   taxonomy TSV with `Feature ID` and `Taxon` followed by `Taxon ID` and `Gene ID`.
@@ -25,6 +25,7 @@ The `tfa` property marks the frequency table and its companion taxonomy as
 representing taxon/gene pairs. They remain compatible with actions accepting
 ordinary frequency tables and taxonomy artifacts. The taxonomy's semantic
 validator requires nonempty IDs and labels and unique taxon/gene pairs.
+TFA-specific actions require the property on both inputs.
 
 For taxon *t*, gene *g*, and sample *s*, a load is the sum over contigs assigned
 to *t* of contig abundance in *s* multiplied by the contig's count of *g*.
@@ -36,9 +37,13 @@ following the `FeatureTable[Frequency]` convention used by `q2-mag
 estimate-abundance` for RPKM/TPM. Both outputs must be retained to interpret
 the table's feature IDs.
 
-`explore-tfa` opens an interactive view of a TFA artifact. Pass an optional
-`FeatureData[Taxonomy]` artifact to show taxonomy assignments in the taxon
-selector and heatmap; taxon IDs are shown where an assignment is missing.
+`explore-tfa` accepts the frequency table and its required gene-taxonomy
+mapping. Taxonomy labels from the mapping appear in the taxon selector and
+heatmap. Choose a taxonomy level to collapse taxa sharing that lineage
+prefix. Loads are summed within each sample before the heatmap statistic is
+computed; the taxon dropdown and all plots use the collapsed groups. Missing
+ranks appear as Unclassified under their known lineage. Original taxa keeps
+the uncollapsed view.
 The full lineage appears in the selector and heatmap tooltip, while the
 heatmap axis shows the terminal taxon name. Its heatmap ranks and colors
 taxon/function links by the selected sum, mean, or median load across all

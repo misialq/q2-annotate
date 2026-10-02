@@ -8,17 +8,19 @@
   <script src="https://cdn.jsdelivr.net/npm/vega@5/build/vega.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-lite@5/build/vega-lite.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-embed@6/build/vega-embed.min.js" defer></script>
+  <script src="taxonomy.js" defer></script>
   <script src="explore.js" defer></script>
 </head>
 <body>
   <main>
     <header>
-      <p class="eyebrow">QIIME 2 · FeatureTable[TFA]</p>
+      <p class="eyebrow">QIIME 2 · FeatureTable[Frequency % Properties('tfa')]</p>
       <h1>Explore taxon–function links</h1>
-      <p>Select a taxon, a function, or both. Choose sum, mean, or median to summarize each heatmap link across samples. The plots below compare loads across the original samples, including zero values.</p>
+      <p>Choose a taxonomy level, then select a taxon, a function, or both. Choose sum, mean, or median to summarize each heatmap link across samples. The plots below compare loads across the original samples, including zero values.</p>
     </header>
 
     <section class="controls" aria-label="Explorer controls">
+      <label>Taxonomy level <select id="level"></select></label>
       <label>Taxon <select id="taxon"></select></label>
       <label>Function <select id="function"></select></label>
       <label>Group samples by <select id="group"></select></label>
@@ -46,7 +48,7 @@
         <div id="samples" class="plot"></div>
       </div>
     </section>
-    <footer>Loads are abundance-weighted function counts. The heatmap metric summarizes each pair across all samples, including zero loads. Matching pairs are summed within each sample for the boxplots and sample bars. Metadata groups apply to those sample plots. Missing metadata is shown as its own group.</footer>
+    <footer>Loads are abundance-weighted function counts. The heatmap metric summarizes each pair across all samples, including zero loads. Taxa sharing a lineage at the selected level are summed within each sample before calculating the heatmap metric. Missing ranks are shown as Unclassified under their known lineage. Matching pairs are summed within each sample for the boxplots and sample bars. Metadata groups apply to those sample plots. Missing metadata is shown as its own group.</footer>
   </main>
   <script id="tfa-data" type="application/json">__TFA_DATA__</script>
 </body>

@@ -18,24 +18,14 @@ import numpy as np
 import pandas as pd
 from qiime2 import Metadata
 
-from .types._format import _split_pair_id
+from ._mapping import _align_gene_taxonomy
 
 
-def _taxon_labels(pairs: list[tuple[str, str]], taxonomy: pd.DataFrame | None):
+def _taxon_labels(pairs: list[tuple[str, str]], taxonomy: pd.DataFrame):
     ids = list(dict.fromkeys(taxon_id for taxon_id, _ in pairs))
-    if taxonomy is not None and "Taxon" not in taxonomy.columns:
-        raise ValueError("Taxonomy must contain a Taxon column.")
-
     full = {}
     for taxon_id in ids:
-        value = (
-            taxonomy.at[taxon_id, "Taxon"]
-            if taxonomy is not None and taxon_id in taxonomy.index
-            else None
-        )
-        full[taxon_id] = (
-            str(value).strip() if pd.notna(value) and str(value).strip() else taxon_id
-        )
+        full[taxon_id] = str(taxonomy.at[taxon_id, "Taxon"]).strip()
 
     duplicates = Counter(full.values())
     full = {
@@ -74,16 +64,17 @@ def _sample_summaries(values: np.ndarray, sample_count: int) -> dict:
 
 def _visualization_data(
     feature_load: biom.Table,
+    gene_taxonomy: pd.DataFrame,
     metadata: Metadata | None,
-    taxonomy: pd.DataFrame | None = None,
 ) -> dict:
     sample_ids = list(feature_load.ids(axis="sample"))
     matrix = feature_load.matrix_data.tocsr()
-    decoded_pairs = [
-        _split_pair_id(observation_id)
-        for observation_id in feature_load.ids(axis="observation")
-    ]
-    full_taxa, short_taxa = _taxon_labels(decoded_pairs, taxonomy)
+    mapping = _align_gene_taxonomy(feature_load, gene_taxonomy)
+    decoded_pairs = list(
+        mapping[["Taxon ID", "Gene ID"]].itertuples(index=False, name=None)
+    )
+    labels = mapping.drop_duplicates("Taxon ID").set_index("Taxon ID")[["Taxon"]]
+    full_taxa, short_taxa = _taxon_labels(decoded_pairs, labels)
     pairs = []
     loads = []
 
@@ -97,6 +88,9 @@ def _visualization_data(
                 "taxon": full_taxa[taxon_id],
                 "taxon_short": short_taxa[taxon_id],
                 "taxon_id": taxon_id,
+                "lineage": [
+                    part.strip() for part in labels.at[taxon_id, "Taxon"].split(";")
+                ],
                 "function": function_id,
                 **_sample_summaries(values, len(sample_ids)),
             }
@@ -123,15 +117,15 @@ def _visualization_data(
 def explore_tfa(
     output_dir: str,
     feature_load: biom.Table,
-    taxonomy: pd.DataFrame = None,
+    gene_taxonomy: pd.DataFrame,
     metadata: Metadata | None = None,
 ) -> None:
-    """Write an interactive TFA explorer with optional taxonomy and groups."""
+    """Write a TFA explorer using mapping labels and optional sample groups."""
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
     assets = resources.files("q2_annotate") / "assets" / "tfa_explore"
     payload = json.dumps(
-        _visualization_data(feature_load, metadata, taxonomy),
+        _visualization_data(feature_load, gene_taxonomy, metadata),
         ensure_ascii=False,
         allow_nan=False,
         separators=(",", ":"),
@@ -144,5 +138,5 @@ def explore_tfa(
     (output / "index.html").write_text(
         html.replace("__TFA_DATA__", payload), encoding="utf-8"
     )
-    for filename in ("explore.js", "style.css"):
+    for filename in ("explore.js", "taxonomy.js", "style.css"):
         shutil.copyfile(assets / filename, output / filename)

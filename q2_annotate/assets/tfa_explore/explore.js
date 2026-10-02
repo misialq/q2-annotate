@@ -1,6 +1,7 @@
 "use strict";
 
 const tfa = JSON.parse(document.getElementById("tfa-data").textContent);
+const levelSelect = document.getElementById("level");
 const taxonSelect = document.getElementById("taxon");
 const functionSelect = document.getElementById("function");
 const groupSelect = document.getElementById("group");
@@ -24,17 +25,34 @@ function addOptions(select, labels, firstLabel) {
   }
 }
 
-const taxa = [...new Set(tfa.pairs.map(pair => pair.taxon))].sort();
+let current = tfa;
 const functions = [...new Set(tfa.pairs.map(pair => pair.function))].sort();
-const loadsByPair = tfa.pairs.map(() => []);
-for (const load of tfa.loads) loadsByPair[load[0]].push(load);
-addOptions(taxonSelect, taxa, "All taxa");
+let loadsByPair = [];
+const depth = tfa.pairs.reduce((depth, pair) => Math.max(depth, pair.lineage.length), 0);
+levelSelect.add(new Option("Original taxa", "0"));
+const rankNames = {d: "Domain", k: "Kingdom", p: "Phylum", c: "Class", o: "Order", f: "Family", g: "Genus", s: "Species"};
+for (let level = 1; level <= depth; level++) {
+  const prefixes = new Set(tfa.pairs.map(pair => {
+    const match = (pair.lineage[level - 1] || "").match(/^([a-z])__/i);
+    return match ? rankNames[match[1].toLowerCase()] : null;
+  }).filter(Boolean));
+  const rank = prefixes.size === 1 ? ` (${[...prefixes][0]})` : "";
+  levelSelect.add(new Option(`Level ${level}${rank}`, String(level)));
+}
+function changeLevel() {
+  current = collapseTaxonomy(tfa, Number(levelSelect.value));
+  loadsByPair = current.pairs.map(() => []);
+  for (const load of current.loads) loadsByPair[load[0]].push(load);
+  taxonSelect.replaceChildren();
+  addOptions(taxonSelect, [...new Set(current.pairs.map(pair => pair.taxon))].sort(), "All taxa");
+}
+changeLevel();
 addOptions(functionSelect, functions, "All functions");
 addOptions(groupSelect, Object.keys(tfa.groups), "All samples");
 
 function matchedPairs() {
   const indices = [];
-  tfa.pairs.forEach((pair, index) => {
+  current.pairs.forEach((pair, index) => {
     if ((!taxonSelect.value || pair.taxon === taxonSelect.value) &&
         (!functionSelect.value || pair.function === functionSelect.value)) {
       indices.push(index);
@@ -67,7 +85,7 @@ function heatmapSpec(indices) {
   const field = {sum: "total", mean: "mean", median: "median"}[metricSelect.value];
   const label = {sum: "Sum", mean: "Mean", median: "Median"}[metricSelect.value];
   const top = indices
-    .map(index => tfa.pairs[index])
+    .map(index => current.pairs[index])
     .sort((a, b) => b[field] - a[field])
     .slice(0, Number(limitSelect.value));
   const taxaOrder = [...new Set(top.map(pair => pair.taxon_short))];
@@ -139,7 +157,7 @@ async function draw() {
   const method = metricSelect.value;
   status.textContent = `${indices.length} matching taxon–function pairs · ${samples.length} samples`;
   document.getElementById("heatmap-caption").textContent =
-    `Each square is one observed pair; color shows its ${{sum: "sum", mean: "mean", median: "median"}[method]} load across all samples, including zeros. Links are ranked by this metric. Click a square to inspect that pair.`;
+    `Each square is one pair at the selected taxonomy level; color shows its ${{sum: "sum", mean: "mean", median: "median"}[method]} load across all samples, including zeros. Links are ranked by this metric. Taxa are summed within each sample before this summary. Click a square to inspect that pair.`;
   document.getElementById("group-caption").textContent = groupSelect.value
     ? `Each box compares sample loads for one ${groupSelect.value} category. Zeros are included.`
     : "One box summarizes all samples. Add categorical metadata to compare groups.";
@@ -181,6 +199,10 @@ function update() {
   });
 }
 
+levelSelect.addEventListener("change", () => {
+  changeLevel();
+  update();
+});
 for (const select of [taxonSelect, functionSelect, groupSelect, metricSelect, limitSelect]) {
   select.addEventListener("change", update);
 }

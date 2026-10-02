@@ -1796,16 +1796,13 @@ plugin.methods.register_function(
 plugin.visualizers.register_function(
     function=explore_tfa,
     inputs={
-        "feature_load": FeatureTable[TFA],
-        "taxonomy": FeatureData[Taxonomy],
+        "feature_load": FeatureTable[Frequency % Properties("tfa")],
+        "gene_taxonomy": FeatureData[Taxonomy % Properties("tfa")],
     },
     parameters={"metadata": Metadata},
     input_descriptions={
         "feature_load": "Sample-resolved taxon/function loads to explore.",
-        "taxonomy": (
-            "Optional taxonomy for the taxon IDs in the TFA table. "
-            "Taxa without an assignment retain their IDs."
-        ),
+        "gene_taxonomy": "Map feature IDs to taxon IDs, gene IDs, and taxonomy labels.",
     },
     parameter_descriptions={
         "metadata": (
