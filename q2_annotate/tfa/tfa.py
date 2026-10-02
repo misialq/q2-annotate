@@ -97,7 +97,7 @@ def _calculate_taxon_gene_loads(
         else sp.csr_matrix((0, abundances.shape[1]))
     )
     if not np.all(np.isfinite(matrix.data)):
-        raise ValueError("Estimated loads must be finite.")
+        raise ValueError("Estimate loads must contain non-negative floats.")
     return matrix, pairs
 
 

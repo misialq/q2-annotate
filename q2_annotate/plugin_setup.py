@@ -22,6 +22,8 @@ from q2_types.feature_data import (
     ProteinSequence,
 )
 from q2_types.feature_table import FeatureTable, Frequency, PresenceAbsence
+
+from q2_annotate.examples import estimate_tfa_example
 from q2_annotate.tfa.tfa import estimate_tfa
 from q2_types.per_sample_sequences import (
     SequencesWithQuality,
@@ -1786,6 +1788,7 @@ plugin.methods.register_function(
         "contigs shared by both input tables and assigned to a taxon with "
         "taxonomy are included."
     ),
+    examples={"basic": estimate_tfa_example},
     citations=[],
 )
 

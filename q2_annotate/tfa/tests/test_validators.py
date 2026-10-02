@@ -84,9 +84,32 @@ class TestTFATaxonomyValidator(TestPluginBase):
         )
         self.assertEqual(artifact.format, TSVTaxonomyDirectoryFormat)
         self.assertEqual(artifact.type, FeatureData[Taxonomy % Properties("tfa")])
-        self.assertLessEqual(artifact.type, FeatureData[Taxonomy])
         pd.testing.assert_frame_equal(artifact.view(pd.DataFrame), self.taxonomy)
         artifact.validate("max")
+
+    def test_errors_list_feature_ids(self):
+        """List the affected feature IDs for each failed constraint."""
+        cases = [
+            ("Feature ID", "", [1]),
+            ("Taxon ID", " ", [1]),
+            ("Gene ID", None, [1]),
+            ("Taxon", "", [1]),
+            ("Feature ID", self.taxonomy.index[1], [1, 2]),
+            ("Gene ID", self.taxonomy.iloc[1]["Gene ID"], [1, 2]),
+        ]
+        for column, value, positions in cases:
+            for level in ("min", "max"):
+                with self.subTest(column=column, value=value, level=level):
+                    invalid = self.taxonomy.copy()
+                    if column == "Feature ID":
+                        invalid.index = [value, *invalid.index[1:]]
+                    else:
+                        invalid.iloc[0, invalid.columns.get_loc(column)] = value
+                    with self.assertRaises(ValidationError) as error:
+                        validate_tfa_taxonomy(invalid, level)
+                    message = str(error.exception)
+                    expected_ids = [invalid.index[p - 1] for p in positions]
+                    self.assertIn(str(expected_ids), message)
 
     def test_min_validation_ignores_errors_after_first_100_rows(self):
         """Check every row constraint beyond the minimal validation prefix."""

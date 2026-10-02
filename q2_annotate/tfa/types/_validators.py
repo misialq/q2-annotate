@@ -26,14 +26,24 @@ def validate_tfa_taxonomy(data: pd.DataFrame, level):
         data = data.iloc[:100]
 
     for identifiers in (data.index.to_series(), data["Taxon ID"], data["Gene ID"]):
-        if identifiers.isna().any() or identifiers.astype(str).str.strip().eq("").any():
+        invalid = identifiers.isna() | identifiers.astype(str).str.strip().eq("")
+        if invalid.any():
             raise ValidationError(
-                "TFA taxonomy feature IDs, taxon IDs, and gene IDs must be nonempty."
+                "TFA taxonomy feature IDs, taxon IDs, and gene IDs must be nonempty. "
+                f"Invalid feature IDs: {data.index[invalid].tolist()}"
             )
-    if data["Taxon"].isna().any() or data["Taxon"].str.strip().eq("").any():
-        raise ValidationError("TFA taxonomy taxon labels must be nonempty.")
+    invalid = data["Taxon"].isna() | data["Taxon"].str.strip().eq("")
+    if invalid.any():
+        raise ValidationError(
+            "TFA taxonomy taxon labels must be nonempty. "
+            f"Invalid feature IDs: {data.index[invalid].tolist()}"
+        )
 
-    if data.index.has_duplicates or data[["Taxon ID", "Gene ID"]].duplicated().any():
+    invalid = data.index.duplicated(keep=False) | data[
+        ["Taxon ID", "Gene ID"]
+    ].duplicated(keep=False)
+    if invalid.any():
         raise ValidationError(
             "TFA taxonomy feature IDs and taxon/gene pairs must be unique."
+            f" Duplicate feature IDs: {data.index[invalid].tolist()}"
         )
