@@ -1,0 +1,7 @@
+Taxon ID	Gene ID	Feature ID
+T1	bla_TEM	T1|bla_TEM
+a|b	c	a%7Cb|c
+a	b|c	a|b%7Cc
+a%7Cb	c	a%257Cb|c
+T1	gene B	T1|gene%20B
+T/2	α	T%2F2|%CE%B1
