@@ -101,9 +101,7 @@ class TestTFAVisualizer(TestPluginBase):
             observation_ids=["geneA", "geneB"],
             sample_ids=["C1", "C2"],
         )
-        taxonomy = pd.DataFrame(
-            {"Taxon": ["Taxon A", "Taxon B"]}, index=["T1", "T2"]
-        )
+        taxonomy = pd.DataFrame({"Taxon": ["Taxon A", "Taxon B"]}, index=["T1", "T2"])
         table, mapping = estimate_tfa(
             abundance, inventory, taxonomy, {"T1": ["C1"], "T2": ["C2"]}
         )
@@ -205,9 +203,7 @@ class TestTFAVisualizer(TestPluginBase):
         table = qiime2.Artifact.import_data(
             "FeatureTable[Frequency % Properties('tfa')]", self._table()
         )
-        ordinary = qiime2.Artifact.import_data(
-            "FeatureData[Taxonomy]", self._mapping()
-        )
+        ordinary = qiime2.Artifact.import_data("FeatureData[Taxonomy]", self._mapping())
         with self.assertRaisesRegex(TypeError, "Properties.*tfa"):
             plugin.visualizers["explore_tfa"](
                 feature_load=table, gene_taxonomy=ordinary
