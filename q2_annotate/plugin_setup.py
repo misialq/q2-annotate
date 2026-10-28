@@ -463,7 +463,10 @@ select_features_description = (
 
 plugin.methods.register_function(
     function=q2_annotate.kraken2.kraken2_to_features,
-    inputs={"reports": SampleData[Kraken2Reports]},
+    inputs={
+        "reports": SampleData[Kraken2Reports]
+        | FeatureData[Kraken2Reports % Properties("contigs")]
+    },
     parameters={"coverage_threshold": Float % Range(0, 100, inclusive_end=True)},
     outputs=[
         ("table", FeatureTable[PresenceAbsence]),
@@ -519,8 +522,10 @@ plugin.methods.register_function(
 plugin.pipelines.register_function(
     function=q2_annotate.kraken2.map_taxonomy_to_contigs,
     inputs={
-        "reports": SampleData[Kraken2Reports % Properties("contigs")],
-        "outputs": SampleData[Kraken2Outputs % Properties("contigs")],
+        "reports": SampleData[Kraken2Reports % Properties("contigs")]
+        | FeatureData[Kraken2Reports % Properties("contigs")],
+        "outputs": SampleData[Kraken2Outputs % Properties("contigs")]
+        | FeatureData[Kraken2Outputs % Properties("contigs")],
     },
     parameters={
         "coverage_threshold": Float % Range(0, 100, inclusive_end=True),
